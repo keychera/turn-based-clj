@@ -10,31 +10,48 @@
   {:actors {:hilda {:hp 400 :mp 200}
             :aluxes {:hp 650 :mp 25}}})
 
-(defonce turn    (atom 0))
+(defonce turn (atom 0))
+
+(def nothing {:desc  "nothing happened"
+              :alter identity})
+
+(defn attack [actor target damage]
+  {:desc (str actor " attacks " target " for " damage " damage!")
+   :alter (fn [state] (update-in state [:actors target] #(update % :hp - damage)))})
+
 (def history
-  (atom [identity identity identity identity identity]))
+  (atom [nothing 
+         nothing
+         (attack :hilda :aluxes 400)
+         (attack :aluxes :hilda 300)
+         nothing]))
 
 (defn reduce-timeline [limit]
   (let [history @history]
     (->> history
          (take (min limit (count history)))
-         (reduce (fn [timeline turn-event]
-                   (conj timeline (turn-event (last timeline))))
-                 [battle-state]))))
+         (reduce (fn [timeline {:keys [desc alter]}]
+                   (let [{:keys [state]} (last timeline)]
+                     (conj timeline {:desc desc
+                                     :state (alter state)})))
+                 [{:desc "battle begins"
+                   :state battle-state}]))))
 
 (defn battle-html [_]
   (let [current-turn @turn]
-   (render-file "battle.html"
-               {:turn current-turn
-                :timeline (reduce-timeline current-turn)})))
+    (render-file "battle.html"
+                 {:turn current-turn
+                  :timeline (reduce-timeline current-turn)})))
 
 (defn post-battle-state [req]
   (let [{:strs [direction]} (payload->map req)
-        new-turn (swap! turn (if (= direction "up") dec inc))]
-    (tap> [direction new-turn])
+        new-turn (swap! turn (if (= direction "up") dec inc))] 
     (str (html [:p "Turn " new-turn]
                [:ol (->> (reduce-timeline new-turn)
-                         (map (fn [state] [:li [:p (str state)]])))]))))
+                         (map (fn [{:keys [desc state]}]
+                                [:li
+                                 [:p (str state)]
+                                 [:p (str desc)]])))]))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
