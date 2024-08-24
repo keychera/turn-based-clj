@@ -1,13 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Hero</title>
 </head>
+
 <body>
-    battle begins
-    <div>{{tick}}</div>
-    {{status}}
+    <h3>battle in progress...</h3>
+    <div id="state" hx-post="/state" hx-trigger="updown-event from:body">
+        <p>Tick {{tick}}</p>
+        <p>{{status}}</p>
+    </div>
+
+    <script>
+        const updownDevent = new Event("updown-event")
+
+        function upDownHandler() {
+            document.body.dispatchEvent(updownDevent)
+        }
+
+        document.body.addEventListener('keydown', function (event) {
+            const callback = {
+                "ArrowUp": upDownHandler,
+                "ArrowDown": upDownHandler,
+            }[event.key]
+            callback?.()
+        })
+    </script>
 </body>
+
 </html>

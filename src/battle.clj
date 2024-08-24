@@ -1,7 +1,7 @@
 (ns battle
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
-
+            [hiccup2.core :refer [html]]
             [selmer.parser :refer [render-file]]))
 
 
@@ -15,11 +15,18 @@
   (render-file "battle.html" {:status battle-state
                               :tick   @tick}))
 
+(defn post-battle-state [_]
+  (swap! tick inc)
+  (str (html [:div#state {:hx-post "/state" :hx-trigger "updown-event from:body"}
+              [:p "Tick " @tick]
+              [:p (str battle-state)]])))
+
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
         verb  (:request-method req)]
     (match [verb paths]
-      [:get []] {:body (battle-html req)}
+      [:get []]         {:body (battle-html req)}
+      [:post ["state"]] {:body (post-battle-state req)}
       :else {:status 404
              :body   "not found"})))
 
