@@ -7,25 +7,38 @@
 
 
 (def battle-state
-  {:hilda  {:hp 400 :mp 200}
-   :aluxes {:hp 650 :mp 25}})
+  {:actors {:hilda {:hp 400 :mp 200}
+            :aluxes {:hp 650 :mp 25}}})
 
-(defonce tick (atom 0))
+(defonce turn    (atom 0))
+(def history
+  (atom [identity identity identity identity identity]))
+
+(defn reduce-timeline [limit]
+  (let [history @history]
+    (->> history
+         (take (min limit (count history)))
+         (reduce (fn [timeline turn-event]
+                   (conj timeline (turn-event (last timeline))))
+                 [battle-state]))))
 
 (defn battle-html [_]
-  (render-file "battle.html" {:status battle-state
-                              :tick   @tick}))
+  (let [current-turn @turn]
+   (render-file "battle.html"
+               {:turn current-turn
+                :timeline (reduce-timeline current-turn)})))
 
 (defn post-battle-state [req]
   (let [{:strs [direction]} (payload->map req)
-        new-tick (swap! tick (if (= direction "up") dec inc))] 
-    (tap> [direction new-tick])
-    (str (html [:p "Tick " new-tick]
-               [:p (str battle-state)]))))
+        new-turn (swap! turn (if (= direction "up") dec inc))]
+    (tap> [direction new-turn])
+    (str (html [:p "Turn " new-turn]
+               [:ol (->> (reduce-timeline new-turn)
+                         (map (fn [state] [:li [:p (str state)]])))]))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
-        verb  (:request-method req)] 
+        verb  (:request-method req)]
     (match [verb paths]
       [:get []]         {:body (battle-html req)}
       [:post ["state"]] {:body (post-battle-state req)}
@@ -37,8 +50,8 @@
   (require '[panas.reload :refer [panas-server run-file-watcher]]
            '[panas.default :refer [reloadable?]])
 
-  @tick
-  (swap! tick inc)
+  @turn
+  (swap! turn inc)
   (add-tap #(def last-tap %))
   (add-tap println)
   last-tap
