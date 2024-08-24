@@ -9,26 +9,39 @@
 
 <body>
     <h3>battle in progress...</h3>
-    <div id="state" hx-post="/state" hx-trigger="updown-event from:body">
+    <div id="state" hx-post="/state" hx-trigger="updown-event from:body" hx-swap="innerHTML">
         <p>Tick {{tick}}</p>
         <p>{{status}}</p>
     </div>
 
-    <script>
-        const updownDevent = new Event("updown-event")
-
-        function upDownHandler() {
-            document.body.dispatchEvent(updownDevent)
-        }
-
-        document.body.addEventListener('keydown', function (event) {
-            const callback = {
-                "ArrowUp": upDownHandler,
-                "ArrowDown": upDownHandler,
-            }[event.key]
-            callback?.()
-        })
-    </script>
+ 
 </body>
+
+<script>
+    function upHandler() {
+        const updownEvent = new CustomEvent("updown-event", {detail: {direction: "up"}})
+        document.body.dispatchEvent(updownEvent)
+    }
+
+    function downHandler() {
+        const updownEvent = new CustomEvent("updown-event",  {detail: {direction: "down"}})
+        document.body.dispatchEvent(updownEvent)
+    }
+
+    document.body.addEventListener('keydown', (event) => {
+        const callback = {
+            "ArrowUp": upHandler,
+            "ArrowDown": downHandler,
+        }[event.key]
+        callback?.()
+    })
+
+    document.body.addEventListener("htmx:beforeRequest", (event) => {
+        let triggeringUpdownEvent = event.detail.requestConfig.triggeringEvent
+        let direction = triggeringUpdownEvent.detail.direction
+        event.detail.requestConfig.parameters["direction"] = direction
+        console.log(direction)
+    })
+</script>
 
 </html>

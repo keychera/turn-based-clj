@@ -1,6 +1,7 @@
 (ns battle
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
+            [common :refer [payload->map]]
             [hiccup2.core :refer [html]]
             [selmer.parser :refer [render-file]]))
 
@@ -15,15 +16,16 @@
   (render-file "battle.html" {:status battle-state
                               :tick   @tick}))
 
-(defn post-battle-state [_]
-  (swap! tick inc)
-  (str (html [:div#state {:hx-post "/state" :hx-trigger "updown-event from:body"}
-              [:p "Tick " @tick]
-              [:p (str battle-state)]])))
+(defn post-battle-state [req]
+  (let [{:strs [direction]} (payload->map req)
+        new-tick (swap! tick (if (= direction "up") dec inc))] 
+    (tap> [direction new-tick])
+    (str (html [:p "Tick " new-tick]
+               [:p (str battle-state)]))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
-        verb  (:request-method req)]
+        verb  (:request-method req)] 
     (match [verb paths]
       [:get []]         {:body (battle-html req)}
       [:post ["state"]] {:body (post-battle-state req)}
@@ -37,11 +39,14 @@
 
   @tick
   (swap! tick inc)
+  (add-tap #(def last-tap %))
+  (add-tap println)
+  last-tap
 
   (def stop-all-fn
     (let [watch-dir "src" url "localhost" port 4242
           root-url (str "http://" (or url "0.0.0.0") ":" (or port 8090))
-          stop-server-fn (panas-server router
+          stop-server-fn (panas-server #'router
                                        {:url  url
                                         :port port}
                                        {:reloadable? (every-pred
