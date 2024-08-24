@@ -1,0 +1,2 @@
+{:paths ["src"]
+ :deps {io.github.keychera/panas.reload {:git/sha "113b444c3132dfc674ec3b5aba241a04d4de388e"}}}

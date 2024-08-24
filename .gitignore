@@ -1,0 +1,8 @@
+.clj-kondo
+.bootleg
+.lsp
+.calva
+.nrepl-port
+.cpcache
+
+.DS_Store
