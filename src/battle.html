@@ -12,10 +12,10 @@
     <div id="state" hx-post="/state" hx-trigger="updown-event from:body" hx-swap="innerHTML">
         <p>Turn {{turn}}</p>
         <ol>
-            {% for point in timeline %}
+            {% for turn in timeline %}
             <li>
-                <p>{{point.state}}</p>
-                <p>{{point.desc}}</p>
+                <p>{{turn.state}}</p>
+                <p>{{turn.desc}}</p>
             </li>
             {% endfor %}
         </ol>

@@ -3,39 +3,8 @@
             [clojure.string :as str]
             [common :refer [payload->map]]
             [hiccup2.core :refer [html]]
+            [timeline :refer [reduce-timeline turn]]
             [selmer.parser :refer [render-file]]))
-
-
-(def battle-state
-  {:actors {:hilda {:hp 400 :mp 200}
-            :aluxes {:hp 650 :mp 25}}})
-
-(defonce turn (atom 0))
-
-(def nothing {:desc  "nothing happened"
-              :alter identity})
-
-(defn attack [actor target damage]
-  {:desc (str actor " attacks " target " for " damage " damage!")
-   :alter (fn [state] (update-in state [:actors target] #(update % :hp - damage)))})
-
-(def history
-  (atom [nothing 
-         nothing
-         (attack :hilda :aluxes 400)
-         (attack :aluxes :hilda 300)
-         nothing]))
-
-(defn reduce-timeline [limit]
-  (let [history @history]
-    (->> history
-         (take (min limit (count history)))
-         (reduce (fn [timeline {:keys [desc alter]}]
-                   (let [{:keys [state]} (last timeline)]
-                     (conj timeline {:desc desc
-                                     :state (alter state)})))
-                 [{:desc "battle begins"
-                   :state battle-state}]))))
 
 (defn battle-html [_]
   (let [current-turn @turn]
@@ -45,7 +14,7 @@
 
 (defn post-battle-state [req]
   (let [{:strs [direction]} (payload->map req)
-        new-turn (swap! turn (if (= direction "up") dec inc))] 
+        new-turn (swap! turn (if (= direction "up") dec inc))]
     (str (html [:p "Turn " new-turn]
                [:ol (->> (reduce-timeline new-turn)
                          (map (fn [{:keys [desc state]}]

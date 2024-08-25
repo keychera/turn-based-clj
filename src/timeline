@@ -1,0 +1,32 @@
+(ns timeline)
+
+(def battle-state
+  {:actors #:actor{:hilda {:hp 400 :mp 200}
+                   :aluxes {:hp 650 :mp 25}}})
+
+(defonce turn (atom 0))
+
+(def nothing {:desc  "nothing happened"
+              :alter identity})
+
+(defn attack [actor target damage]
+  {:desc (str actor " attacks " target " for " damage " damage!")
+   :alter (fn [state] (update-in state [:actors target] #(update % :hp - damage)))})
+
+(def history
+  (atom [nothing
+         nothing
+         (attack :actor/hilda :actor/aluxes 400)
+         (attack :actor/aluxes :actor/hilda 300)
+         nothing]))
+
+(defn reduce-timeline [limit]
+  (let [history @history]
+    (->> history
+         (take (min limit (count history)))
+         (reduce (fn [timeline {:keys [desc alter]}]
+                   (let [{:keys [state]} (last timeline)]
+                     (conj timeline {:desc desc
+                                     :state (alter state)})))
+                 [{:desc "battle begins"
+                   :state battle-state}]))))
