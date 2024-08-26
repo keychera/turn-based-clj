@@ -17,7 +17,7 @@
         new-turn (swap! turn (if (= direction "up") dec inc))]
     (str (html [:p "Turn " new-turn]
                [:ol (->> (reduce-timeline new-turn)
-                         (map (fn [{:keys [desc state]}]
+                         (map (fn [{:moment/keys [desc state]}]
                                 [:li
                                  [:p (str state)]
                                  [:p (str desc)]])))]))))

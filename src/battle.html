@@ -14,8 +14,8 @@
         <ol>
             {% for turn in timeline %}
             <li>
-                <p>{{turn.state}}</p>
-                <p>{{turn.desc}}</p>
+                <p>{{turn.moment/state}}</p>
+                <p>{{turn.moment/desc}}</p>
             </li>
             {% endfor %}
         </ol>
