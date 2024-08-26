@@ -2,29 +2,43 @@
 
 (defonce turn (atom 0))
 (def initial-state
-  #:state{:actors #:actor{:hilda  #:attr{:hp 40 :mp 200 :atk 12 :def 20
-                                         :moveset {}}
-                          :aluxes #:attr{:hp 65 :mp 25 :atk 30 :def 10}}})
+  #:state{:actors #:actor{:hilda  #:attr{:key :actor/hilda
+                                         :name "A Peculiar Witch"
+                                         :hp 40 :mp 200 :atk 12 :def 20
+                                         :moveset #{:action/attack :spell/fireball :spell/poison}}
+                          :aluxes #:attr{:key :actor/aluxes
+                                         :name "Aluxes"
+                                         :hp 65 :mp 25 :atk 30 :def 10
+                                         :moveset #{:action/attack :action/slash}}}})
 
 (def nothing
   (fn nothing-fn [state] #:moment{:desc  "nothing happened"
                                   :state state}))
 
-(defn attack-damage-calc [actor target]
-  (max (abs (/ (- (:attr/atk actor) (:attr/def target)) 2)) 0))
+(defn update-actor [state actor f]
+  (update-in state [:state/actors (:attr/key actor)] f))
 
-(defn attack [actor-key target-key]
+(defn attack [self-key target-key]
   (fn attack-alter-fn [state]
-    (let [actor (-> state :state/actors actor-key)
+    (let [self (-> state :state/actors self-key)
           target (-> state :state/actors target-key)
-          _ (tap> ["what" state actor target])
-          damage (attack-damage-calc actor target)]
-      #:moment{:desc  (str actor-key " attacks " target-key " for " damage " damage!")
-               :state (update-in state [:state/actors target-key] #(update % :attr/hp - damage))})))
+          damage (max (abs (/ (- (:attr/atk self) (:attr/def target)) 2)) 0)]
+      #:moment{:desc  (str (:attr/name self) " attacked " (:attr/name target) " for " damage " damage!")
+               :state (-> state (update-actor target #(update % :attr/hp - damage)))})))
+
+(defn fireball [self-key target-key]
+  (fn fireball-alter-fn [state] 
+    (let [self (-> state :state/actors self-key)
+          target (-> state :state/actors target-key)
+          damage 25] 
+      #:moment{:desc  (str (:attr/name self) " casted fireball towards " (:attr/name target) " for " damage " damage!")
+               :state (-> state
+                          (update-actor target #(update % :attr/hp - damage))
+                          (update-actor self #(update % :attr/mp - 10)))})))
 
 (def timeline
   (atom [nothing
-         (-> :actor/hilda  (attack :actor/aluxes))
+         (-> :actor/hilda  (fireball :actor/aluxes))
          (-> :actor/aluxes (attack :actor/hilda))
         ;;  (-> :actor/hilda  (cast :magic/fireball {:to :actor/aluxes}))
          nothing]))
