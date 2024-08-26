@@ -1,0 +1,10 @@
+{
+    "calva.replConnectSequences": [
+        {
+            "name": "babashka repl",
+            "projectType": "babashka",
+            "autoSelectForJackIn": true,
+            "afterCLJReplJackInCode": "(do  (require 'panas.reload 'panas.default 'battle) (in-ns 'battle))"
+        }
+    ]
+}

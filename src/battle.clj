@@ -33,8 +33,7 @@
 
 
 (comment
-  (require '[panas.reload :refer [panas-server run-file-watcher]]
-           '[panas.default :refer [reloadable?]])
+  (require 'panas.reload 'panas.default)
 
   @turn
   (swap! turn inc)
@@ -45,14 +44,14 @@
   (def stop-all-fn
     (let [watch-dir "src" url "localhost" port 4242
           root-url (str "http://" (or url "0.0.0.0") ":" (or port 8090))
-          stop-server-fn (panas-server #'router
+          stop-server-fn (panas.reload/panas-server #'router
                                        {:url  url
                                         :port port}
                                        {:reloadable? (every-pred
                                                       (fn [{{:strs [hx-target hx-request]} :headers}]
                                                         (or (not hx-request) (= "main-body" hx-target)))
-                                                      reloadable?)})
-          stop-watcher-fn (run-file-watcher root-url router watch-dir)]
+                                                      panas.default/reloadable?)})
+          stop-watcher-fn (panas.reload/run-file-watcher root-url router watch-dir)]
       (println "[panas] serving" root-url)
       (fn []
         (stop-server-fn) (stop-watcher-fn))))
