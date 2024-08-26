@@ -20,7 +20,7 @@
       {:desc  (str actor-key " attacks " target-key " for " damage " damage!")
        :state (update-in state [:state/actors target-key] #(update % :hp - damage))})))
 
-(def history
+(def timeline
   (atom [nothing
          (-> :actor/hilda  (attack :actor/aluxes))
          (-> :actor/aluxes (attack :actor/hilda))
@@ -28,16 +28,19 @@
          nothing]))
 
 (defn reduce-timeline [limit]
-  (let [history @history]
-    (->> history
-         (take (min limit (count history)))
+  (let [timeline @timeline]
+    (->> timeline
+         (take (min limit (count timeline)))
          (reduce (fn [timeline alter-fn]
                    (let [{:keys [state]} (last timeline)]
                      (conj timeline (alter-fn state))))
                  [{:desc "battle begins"
                    :state initial-state}]))))
 
+(defn history []
+  (reduce-timeline (count @timeline)))
 
 (comment
   (add-tap #(def last-tap %))
-  (reduce-timeline 2))
+  (reduce-timeline 2)
+  (history))
