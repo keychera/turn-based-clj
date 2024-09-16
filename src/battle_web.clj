@@ -1,4 +1,4 @@
-(ns battle
+(ns battle-web
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [common :refer [payload->map]]
