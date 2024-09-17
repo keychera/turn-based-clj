@@ -112,7 +112,7 @@
       :else              (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
 
 (defn reduce-effects [original-timeline]
-  (let [state   (peek original-timeline)
+  (let [state (peek original-timeline)
         all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
         afflictions (entities->effect-data all-afflicted)]
     (->> afflictions
@@ -124,7 +124,7 @@
 
 (defn do-eval [namespace-sym form]
   (let [user-ns (create-ns namespace-sym)]
-   (binding [*ns* user-ns] (clojure.core/eval form))))
+    (binding [*ns* user-ns] (clojure.core/eval form))))
 
 (defn reduce-timeline
   ([initial-state history]
