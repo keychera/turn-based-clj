@@ -51,32 +51,42 @@
 (def history
   (atom ['identity
          '(-> :actor/hilda (poison :actor/aluxes))
+         'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))
+         'identity
          '(-> :actor/hilda (charm :actor/aluxes))
+         'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))
+         'identity
          '(-> :actor/hilda (magic-up))
+         'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))
+         'identity
          '(-> :actor/hilda (fireball :actor/aluxes))
+         'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))]))
+
+(defn entities->effects [entities]
+  (->> entities
+       (mapcat (fn [[afflicted attr]]
+                 (->> (:attr/effect attr)
+                      (map (fn [[effect-name effect-info]]
+                             [afflicted effect-name effect-info])))))))
 
 (defn reduce-effects [timeline]
   (let [state   (last timeline)
         all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
-        ;; TODO flatten instead of nested reduce  I think
-        afflictions (->> all-afflicted (map (fn [[afflicted attr]] [afflicted (:attr/effect attr)])))]
+        afflictions (entities->effects all-afflicted)]
     (->> afflictions
-         (reduce (fn [timeline [afflicted effects]]
-                   (->> effects
-                        (reduce (fn [timeline [name {:effect-info/keys [duration]} :as effect]]
-                                  (tap> [timeline afflicted name effect])
-                                  (let [new-duration (dec duration)
-                                        state (last timeline)
-                                        new-history (->> state
-                                                         ;; TODO each effect here
-                                                         ;; TODO remove on duration 0
-                                                         (setval [:state/entities afflicted :attr/effect name :effect-info/duration] new-duration))]
-                                    (-> timeline (conj new-history))))
-                                timeline)))
+         (reduce (fn [timeline [afflicted effect-name effect-info]]
+                   (let [{:effect-info/keys [duration]} effect-info
+                         new-duration (dec duration)
+                         state (last timeline)
+                         new-history (->> state
+                                          ;; TODO each effect here
+                                          ;; TODO remove on duration 0
+                                          (setval [:state/entities afflicted :attr/effect effect-name :effect-info/duration] new-duration))]
+                     (-> timeline (conj new-history))))
                  timeline))))
 
 (defn reduce-timeline
@@ -89,8 +99,7 @@
                   (let [alter (eval alter-fn)
                         state (last timeline)
                         new-history (alter state)
-                        new-turn (inc (or (:state/turn state) 0))
-                        _ (tap> [:turn new-turn])]
+                        new-turn (inc (or (:state/turn state) 0))]
                     (-> timeline
                         (conj (-> new-history (assoc :state/turn new-turn)))
                         (reduce-effects))))
