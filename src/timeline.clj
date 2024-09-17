@@ -28,7 +28,7 @@
 
 (defn magic-up [actor]
   (fn [state]
-    (let [manacost 40 buff :debuff/poison duration 3]
+    (let [manacost 40 buff :buff/magic-up duration 3]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
@@ -48,7 +48,7 @@
 
 (defn charm [actor target]
   (fn [state]
-    (let [manacost 80 debuff :buff/charm duration 3]
+    (let [manacost 80 debuff :debuff/charm duration 3]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/effect]
