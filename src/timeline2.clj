@@ -26,7 +26,7 @@
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
-                      #(assoc % buff #:effect-info{:source actor :duration duration}))))))
+                      #(assoc % buff #:effect-data{:source actor :duration duration}))))))
 
 (defn poison [actor target]
   (fn [state]
@@ -35,7 +35,7 @@
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/hp] #(- % damage))
            (transform [:state/entities target :attr/effect]
-                      #(assoc % debuff #:effect-info{:source actor :duration duration}))))))
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))))))
 
 
 (defn charm [actor target]
@@ -44,7 +44,7 @@
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/effect]
-                      #(assoc % debuff #:effect-info{:source actor :duration duration}))))))
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))))))
 
 
 
@@ -66,26 +66,31 @@
          'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))]))
 
-(defn entities->effects [entities]
+(defn entities->effect-data [entities]
   (->> entities
        (mapcat (fn [[afflicted attr]]
                  (->> (:attr/effect attr)
-                      (map (fn [[effect-name effect-info]]
-                             [afflicted effect-name effect-info])))))))
+                      (map (fn [[effect-name effect-data]]
+                             (assoc effect-data
+                                    :effect-data/effect-name effect-name
+                                    :effect-data/afflicted afflicted))))))))
+
+(defn apply-effect [effect-data state]
+  (let [{:effect-data/keys [afflicted effect-name duration]} effect-data
+        new-duration (min duration (dec duration))]
+    (case new-duration
+      -1 state
+      0 (->> state (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
+      (->> state (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
 
 (defn reduce-effects [timeline]
   (let [state   (last timeline)
         all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
-        afflictions (entities->effects all-afflicted)]
+        afflictions (entities->effect-data all-afflicted)]
     (->> afflictions
-         (reduce (fn [timeline [afflicted effect-name effect-info]]
-                   (let [{:effect-info/keys [duration]} effect-info
-                         new-duration (dec duration)
-                         state (last timeline)
-                         new-history (->> state
-                                          ;; TODO each effect here
-                                          ;; TODO remove on duration 0
-                                          (setval [:state/entities afflicted :attr/effect effect-name :effect-info/duration] new-duration))]
+         (reduce (fn [timeline effect-data]
+                   (let [state (last timeline)
+                         new-history (apply-effect effect-data state)]
                      (-> timeline (conj new-history))))
                  timeline))))
 
