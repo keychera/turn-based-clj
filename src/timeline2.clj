@@ -1,5 +1,5 @@
 (ns timeline2
-  (:require [com.rpl.specter :as sp :refer [select setval transform]]))
+  (:require [com.rpl.specter :as sp :refer [select select-one setval transform]]))
 
 (def initial-state
   #:state{:desc "battle begins"
@@ -8,19 +8,23 @@
 
 ;; Actions 
 
+(defn nothing-happened [state]
+  (->> state (setval [:state/desc] "nothing happened!")))
+
 (defn basic-attack [actor target]
   (fn [state]
     (let [damage 50]
       (->> state
-           (transform [:state/entities target :attr/hp] #(- % damage))))))
-
+           (transform [:state/entities target :attr/hp] #(- % damage))
+           (setval [:state/desc] (str actor " attacks " target " for " damage " damage!"))))))
 
 (defn fireball [actor target]
   (fn [state]
     (let [manacost 15 damage 50]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
-           (transform [:state/entities target :attr/hp] #(- % damage))))))
+           (transform [:state/entities target :attr/hp] #(- % damage))
+           (setval [:state/desc] (str actor " cast fireball towards " target " for " damage " damage!"))))))
 
 (defn magic-up [actor]
   (fn [state]
@@ -28,7 +32,8 @@
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
-                      #(assoc % buff #:effect-data{:source actor :duration duration}))))))
+                      #(assoc % buff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " mafic attack is buffed!"))))))
 
 (defn poison [actor target]
   (fn [state]
@@ -37,7 +42,8 @@
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/hp] #(- % damage))
            (transform [:state/entities target :attr/effect]
-                      #(assoc % debuff #:effect-data{:source actor :duration duration}))))))
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " poisons " target " for " damage " damage! " target " is now poisoned!"))))))
 
 
 (defn charm [actor target]
@@ -46,7 +52,8 @@
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/effect]
-                      #(assoc % debuff #:effect-data{:source actor :duration duration}))))))
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " charms " target "! " target " is now charmed"))))))
 
 ;; Effects
 
@@ -54,31 +61,33 @@
 
 (defmethod unleash-effect :debuff/poison
   [{:effect-data/keys [afflicted state]}]
-  (->> state
-       (transform [:state/entities afflicted :attr/hp]
-                  (fn [hp] (- hp (Math/floor (/ hp 10)))))))
+  (let [afflicted-hp (select-one [:state/entities afflicted :attr/hp] state)
+        _ (tap> afflicted-hp)
+        damage (Math/floor (/ afflicted-hp 10))]
+    (->> state
+         (transform [:state/entities afflicted :attr/hp] (fn [hp] (- hp damage)))
+         (setval [:state/desc] (str afflicted " is poisoned! receives " damage " damage!")))))
 
-(defmethod unleash-effect :default [{:effect-data/keys [state]}] state)
+(defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}] 
+  (->> state (setval [:state/desc] (str "notthing happened for " effect-name))))
 
 ;; History
 
 (def history
-  (atom ['identity
+  (atom ['nothing-happened
          '(-> :actor/hilda (poison :actor/aluxes))
-         'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))
-         'identity
          '(-> :actor/hilda (charm :actor/aluxes))
-         'identity
+         'nothing-happened
          '(-> :actor/aluxes (basic-attack :actor/hilda))
-         'identity
          '(-> :actor/hilda (magic-up))
-         'identity
+         'nothing-happened
          '(-> :actor/aluxes (basic-attack :actor/hilda))
-         'identity
          '(-> :actor/hilda (fireball :actor/aluxes))
-         'identity
-         '(-> :actor/aluxes (basic-attack :actor/hilda))]))
+         '(-> :actor/aluxes (basic-attack :actor/hilda))
+         'nothing-happened
+         'nothing-happened
+         'nothing-happened]))
 
 ;; Engine
 
