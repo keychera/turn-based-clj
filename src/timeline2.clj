@@ -91,6 +91,8 @@
 
 ;; Engine
 
+(def turn (atom 0))
+
 (defn entities->effect-data [entities]
   (->> entities
        (mapcat (fn [[afflicted attr]]
@@ -120,6 +122,10 @@
                      (-> timeline (conj new-history))))
                  original-timeline))))
 
+(defn do-eval [namespace-sym form]
+  (let [user-ns (create-ns namespace-sym)]
+   (binding [*ns* user-ns] (clojure.core/eval form))))
+
 (defn reduce-timeline
   ([initial-state history]
    (reduce-timeline initial-state history (count history)))
@@ -127,7 +133,7 @@
    (->> history
         (take (min limit (count history)))
         (reduce (fn [timeline alter-fn]
-                  (let [alter (eval alter-fn)
+                  (let [alter (do-eval 'timeline2 alter-fn)
                         state (peek timeline)
                         new-history (alter state)
                         new-turn (inc (or (:state/turn state) 0))]

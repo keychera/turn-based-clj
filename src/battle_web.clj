@@ -3,24 +3,24 @@
             [clojure.string :as str]
             [common :refer [payload->map]]
             [hiccup2.core :refer [html]]
-            [timeline :refer [reduce-timeline turn]]
-            [selmer.parser :refer [render-file]]))
+            [selmer.parser :refer [render-file]]
+            [timeline2 :refer [history initial-state reduce-timeline turn]]))
 
 (defn battle-html [_]
   (let [current-turn @turn]
     (render-file "battle.html"
                  {:turn current-turn
-                  :timeline (reduce-timeline current-turn)})))
+                  :timeline (reduce-timeline initial-state @history current-turn)})))
 
 (defn post-battle-state [req]
   (let [{:strs [direction]} (payload->map req)
         new-turn (swap! turn (if (= direction "up") dec inc))]
     (str (html [:p "Turn " new-turn]
-               [:ol (->> (reduce-timeline new-turn)
-                         (map (fn [{:moment/keys [desc state]}]
+               [:ol (->> (reduce-timeline initial-state @history new-turn)
+                         (map (fn [{:state/keys [desc entities]}]
                                 [:li
-                                 [:p (str state)]
-                                 [:p (str desc)]])))]))))
+                                 [:p (str entities)]
+                                 [:p [:b (str desc)]]])))]))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
