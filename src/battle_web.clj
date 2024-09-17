@@ -4,7 +4,7 @@
             [common :refer [payload->map]]
             [hiccup2.core :refer [html]]
             [selmer.parser :refer [render-file]]
-            [timeline2 :refer [history initial-state reduce-timeline turn]]))
+            [timeline :refer [history initial-state reduce-timeline turn]]))
 
 (defn battle-html [_]
   (let [current-turn @turn]

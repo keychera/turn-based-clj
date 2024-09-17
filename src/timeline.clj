@@ -1,64 +1,153 @@
-(ns timeline)
+(ns timeline
+  (:require [com.rpl.specter :as sp :refer [select select-one setval transform]]))
 
-(defonce turn (atom 0))
 (def initial-state
-  #:state{:actors #:actor{:hilda  #:attr{:key :actor/hilda
-                                         :name "A Peculiar Witch"
-                                         :hp 40 :mp 200 :atk 12 :def 20
-                                         :moveset #{:action/attack :spell/fireball :spell/poison}}
-                          :aluxes #:attr{:key :actor/aluxes
-                                         :name "Aluxes"
-                                         :hp 65 :mp 25 :atk 30 :def 10
-                                         :moveset #{:action/attack :action/slash}}}})
+  #:state{:desc "battle begins"
+          :entities #:actor{:hilda #:attr{:hp 560 :mp 200}
+                            :aluxes #:attr{:hp 800 :mp 10}}})
 
-(def nothing
-  (fn nothing-fn [state] #:moment{:desc  "nothing happened"
-                                  :state state}))
+;; Actions 
 
-(defn update-actor [state actor f]
-  (update-in state [:state/actors (:attr/key actor)] f))
+(defn nothing-happened [state]
+  (->> state (setval [:state/desc] "nothing happened!")))
 
-(defn attack [self-key target-key]
-  (fn attack-alter-fn [state]
-    (let [self (-> state :state/actors self-key)
-          target (-> state :state/actors target-key)
-          damage (max (abs (/ (- (:attr/atk self) (:attr/def target)) 2)) 0)]
-      #:moment{:desc  (str (:attr/name self) " attacked " (:attr/name target) " for " damage " damage!")
-               :state (-> state (update-actor target #(update % :attr/hp - damage)))})))
+(defn basic-attack [actor target]
+  (fn [state]
+    (let [damage 50]
+      (->> state
+           (transform [:state/entities target :attr/hp] #(- % damage))
+           (setval [:state/desc] (str actor " attacks " target " for " damage " damage!"))))))
 
-(defn fireball [self-key target-key]
-  (fn fireball-alter-fn [state] 
-    (let [self (-> state :state/actors self-key)
-          target (-> state :state/actors target-key)
-          damage 25] 
-      #:moment{:desc  (str (:attr/name self) " casted fireball towards " (:attr/name target) " for " damage " damage!")
-               :state (-> state
-                          (update-actor target #(update % :attr/hp - damage))
-                          (update-actor self #(update % :attr/mp - 10)))})))
+(defn fireball [actor target]
+  (fn [state]
+    (let [manacost 15 damage 50]
+      (->> state
+           (transform [:state/entities actor :attr/mp] #(- % manacost))
+           (transform [:state/entities target :attr/hp] #(- % damage))
+           (setval [:state/desc] (str actor " cast fireball towards " target " for " damage " damage!"))))))
 
-(def timeline
-  (atom [nothing
-         (-> :actor/hilda  (fireball :actor/aluxes))
-         (-> :actor/aluxes (attack :actor/hilda))
-        ;;  (-> :actor/hilda  (cast :magic/fireball {:to :actor/aluxes}))
-         nothing]))
+(defn magic-up [actor]
+  (fn [state]
+    (let [manacost 40 buff :debuff/poison duration 3]
+      (->> state
+           (transform [:state/entities actor :attr/mp] #(- % manacost))
+           (transform [:state/entities actor :attr/effect]
+                      #(assoc % buff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " mafic attack is buffed!"))))))
 
-(defn reduce-timeline [limit]
-  (let [timeline @timeline]
-    (->> timeline
-         (take (min limit (count timeline)))
-         (reduce (fn [timeline alter-fn]
-                   (let [{:moment/keys [state]} (last timeline)]
-                     (conj timeline (alter-fn state))))
-                 [#:moment{:desc  "battle begins"
-                           :state initial-state}]))))
+(defn poison [actor target]
+  (fn [state]
+    (let [manacost 30 damage 5 debuff :debuff/poison duration -1]
+      (->> state
+           (transform [:state/entities actor :attr/mp] #(- % manacost))
+           (transform [:state/entities target :attr/hp] #(- % damage))
+           (transform [:state/entities target :attr/effect]
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " poisons " target " for " damage " damage! " target " is now poisoned!"))))))
 
-(defn history []
-  (reduce-timeline (count @timeline)))
+
+(defn charm [actor target]
+  (fn [state]
+    (let [manacost 80 debuff :buff/charm duration 3]
+      (->> state
+           (transform [:state/entities actor :attr/mp] #(- % manacost))
+           (transform [:state/entities target :attr/effect]
+                      #(assoc % debuff #:effect-data{:source actor :duration duration}))
+           (setval [:state/desc] (str actor " charms " target "! " target " is now charmed"))))))
+
+;; Effects
+
+(defmulti unleash-effect :effect-data/effect-name)
+
+(defmethod unleash-effect :debuff/poison
+  [{:effect-data/keys [afflicted state]}]
+  (let [afflicted-hp (select-one [:state/entities afflicted :attr/hp] state)
+        _ (tap> afflicted-hp)
+        damage (Math/floor (/ afflicted-hp 10))]
+    (->> state
+         (transform [:state/entities afflicted :attr/hp] (fn [hp] (- hp damage)))
+         (setval [:state/desc] (str afflicted " is poisoned! receives " damage " damage!")))))
+
+(defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}]
+  (->> state (setval [:state/desc] (str "notthing happened for " effect-name))))
+
+;; History
+
+(def history
+  (atom ['nothing-happened
+         '(-> :actor/hilda (poison :actor/aluxes))
+         '(-> :actor/aluxes (basic-attack :actor/hilda))
+         '(-> :actor/hilda (charm :actor/aluxes))
+         'nothing-happened
+         '(-> :actor/aluxes (basic-attack :actor/hilda))
+         '(-> :actor/hilda (magic-up))
+         'nothing-happened
+         '(-> :actor/aluxes (basic-attack :actor/hilda))
+         '(-> :actor/hilda (fireball :actor/aluxes))
+         '(-> :actor/aluxes (basic-attack :actor/hilda))
+         'nothing-happened
+         'nothing-happened
+         'nothing-happened]))
+
+;; Engine
+
+(def turn (atom 0))
+
+(defn entities->effect-data [entities]
+  (->> entities
+       (mapcat (fn [[afflicted attr]]
+                 (->> (:attr/effect attr)
+                      (map (fn [[effect-name effect-data]]
+                             (assoc effect-data
+                                    :effect-data/effect-name effect-name
+                                    :effect-data/afflicted afflicted))))))))
+
+(defn apply-effect [effect-data state]
+  (let [{:effect-data/keys [afflicted effect-name duration]} effect-data
+        new-duration (dec duration)
+        state-after-effect (unleash-effect (assoc effect-data :effect-data/state state))]
+    (cond
+      (= duration -1)    state-after-effect
+      (= new-duration 0) (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
+      :else              (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
+
+(defn reduce-effects [original-timeline]
+  (let [state   (peek original-timeline)
+        all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
+        afflictions (entities->effect-data all-afflicted)]
+    (->> afflictions
+         (reduce (fn [timeline effect-data]
+                   (let [state (peek timeline)
+                         new-history (apply-effect effect-data state)]
+                     (-> timeline (conj new-history))))
+                 original-timeline))))
+
+(defn do-eval [namespace-sym form]
+  (let [user-ns (create-ns namespace-sym)]
+   (binding [*ns* user-ns] (clojure.core/eval form))))
+
+(defn reduce-timeline
+  ([initial-state history]
+   (reduce-timeline initial-state history (count history)))
+  ([initial-state history limit]
+   (->> history
+        (take (min limit (count history)))
+        (reduce (fn [timeline alter-fn]
+                  (let [alter (do-eval 'timeline2 alter-fn)
+                        state (peek timeline)
+                        new-history (alter state)
+                        new-turn (inc (or (:state/turn state) 0))]
+                    (-> timeline
+                        (conj (-> new-history (assoc :state/turn new-turn)))
+                        (reduce-effects))))
+                [initial-state]))))
 
 (comment
-  (add-tap #(def last-tap %))
-  last-tap
+  @history
 
-  (reduce-timeline 2)
-  (history))
+  (add-tap #(def last-tap %))
+  (add-tap #(println %))
+  last-tap
+  (tap> "hello")
+
+  (reduce-timeline initial-state @history 5))
