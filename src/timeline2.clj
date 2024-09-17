@@ -6,6 +6,8 @@
           :entities #:actor{:hilda #:attr{:hp 560 :mp 200}
                             :aluxes #:attr{:hp 800 :mp 10}}})
 
+;; Actions 
+
 (defn basic-attack [actor target]
   (fn [state]
     (let [damage 50]
@@ -46,7 +48,19 @@
            (transform [:state/entities target :attr/effect]
                       #(assoc % debuff #:effect-data{:source actor :duration duration}))))))
 
+;; Effects
 
+(defmulti unleash-effect :effect-data/effect-name)
+
+(defmethod unleash-effect :debuff/poison
+  [{:effect-data/keys [afflicted state]}]
+  (->> state
+       (transform [:state/entities afflicted :attr/hp]
+                  (fn [hp] (- hp (Math/floor (/ hp 10)))))))
+
+(defmethod unleash-effect :default [{:effect-data/keys [state]}] state)
+
+;; History
 
 (def history
   (atom ['identity
@@ -66,6 +80,8 @@
          'identity
          '(-> :actor/aluxes (basic-attack :actor/hilda))]))
 
+;; Engine
+
 (defn entities->effect-data [entities]
   (->> entities
        (mapcat (fn [[afflicted attr]]
@@ -74,14 +90,6 @@
                              (assoc effect-data
                                     :effect-data/effect-name effect-name
                                     :effect-data/afflicted afflicted))))))))
-
-(defmulti unleash-effect :effect-data/effect-name)
-
-(defmethod unleash-effect :debuff/poison
-  [{:effect-data/keys [afflicted state]}]
-  (->> state
-       (transform [:state/entities afflicted :attr/hp]
-                  (fn [hp] (- hp (Math/floor (/ hp 10)))))))
 
 (defn apply-effect [effect-data state]
   (let [{:effect-data/keys [afflicted effect-name duration]} effect-data
