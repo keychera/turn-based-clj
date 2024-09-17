@@ -22,7 +22,7 @@
 
 (defn magic-up [actor]
   (fn [state]
-    (let [manacost 40 buff :effect/poison duration 3]
+    (let [manacost 40 buff :debuff/poison duration 3]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
@@ -30,7 +30,7 @@
 
 (defn poison [actor target]
   (fn [state]
-    (let [manacost 30 damage 5 debuff :effect/poison duration 3]
+    (let [manacost 30 damage 5 debuff :debuff/poison duration -1]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/hp] #(- % damage))
@@ -40,7 +40,7 @@
 
 (defn charm [actor target]
   (fn [state]
-    (let [manacost 80 debuff :effect/charm duration 3]
+    (let [manacost 80 debuff :buff/charm duration 3]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/effect]
@@ -75,13 +75,22 @@
                                     :effect-data/effect-name effect-name
                                     :effect-data/afflicted afflicted))))))))
 
+(defmulti unleash-effect :effect-data/effect-name)
+
+(defmethod unleash-effect :debuff/poison
+  [{:effect-data/keys [afflicted state]}]
+  (->> state
+       (transform [:state/entities afflicted :attr/hp]
+                  (fn [hp] (- hp (Math/floor (/ hp 10)))))))
+
 (defn apply-effect [effect-data state]
   (let [{:effect-data/keys [afflicted effect-name duration]} effect-data
-        new-duration (min duration (dec duration))]
-    (case new-duration
-      -1 state
-      0 (->> state (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
-      (->> state (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
+        new-duration (dec duration)
+        state-after-effect (unleash-effect (assoc effect-data :effect-data/state state))]
+    (cond
+      (= duration -1)    state-after-effect
+      (= new-duration 0) (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
+      :else              (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
 
 (defn reduce-effects [timeline]
   (let [state   (last timeline)
