@@ -68,7 +68,7 @@
          (transform [:state/entities afflicted :attr/hp] (fn [hp] (- hp damage)))
          (setval [:state/desc] (str afflicted " is poisoned! receives " damage " damage!")))))
 
-(defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}] 
+(defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}]
   (->> state (setval [:state/desc] (str "notthing happened for " effect-name))))
 
 ;; History
@@ -109,16 +109,16 @@
       (= new-duration 0) (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
       :else              (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
 
-(defn reduce-effects [timeline]
-  (let [state   (last timeline)
+(defn reduce-effects [original-timeline]
+  (let [state   (peek original-timeline)
         all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
         afflictions (entities->effect-data all-afflicted)]
     (->> afflictions
          (reduce (fn [timeline effect-data]
-                   (let [state (last timeline)
+                   (let [state (peek timeline)
                          new-history (apply-effect effect-data state)]
                      (-> timeline (conj new-history))))
-                 timeline))))
+                 original-timeline))))
 
 (defn reduce-timeline
   ([initial-state history]
@@ -128,7 +128,7 @@
         (take (min limit (count history)))
         (reduce (fn [timeline alter-fn]
                   (let [alter (eval alter-fn)
-                        state (last timeline)
+                        state (peek timeline)
                         new-history (alter state)
                         new-turn (inc (or (:state/turn state) 0))]
                     (-> timeline
