@@ -12,6 +12,14 @@
            (map (fn [[k v]] [k (java.net.URLDecoder/decode v)]))
            vec))
 
+(defn query->map 
+   "parse str of shape 'a=1&b=2' to {:a \"1\", :b \"2\"}"
+  [q] (->> (str/split q #"&")
+           (map #(str/split % #"="))
+           (remove #(= (count %) 1))
+           (map (fn [[k v]] [(keyword k) (java.net.URLDecoder/decode v)]))
+           (into {})))
+
 (defn payload->vec
   "use this if the key is not unique, return a shape of [[k v1] [k v2]]"
   [req]

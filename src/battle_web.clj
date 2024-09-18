@@ -1,47 +1,58 @@
 (ns battle-web
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
-            [common :refer [htmx? query->vec]]
+            [common :refer [htmx? query->map]]
             [hiccup2.core :refer [html]]
             [selmer.parser :refer [render-file]]
             [timeline :refer [history initial-state reduce-timeline turn]]))
 
 (defn timeline-html
-  ([turn] (timeline-html turn 0))
-  ([turn moment]
-   (let [timeline (reduce-timeline initial-state @history turn)
-         [current-turn & prev-turns] (->> timeline rseq (group-by :state/turn))]
+  ([turn#] (timeline-html turn# 0))
+  ([turn# moment#]
+   (let [timeline (reduce-timeline initial-state @history turn#)
+         [current-turn & prev-turns] (->> timeline rseq (group-by :state/turn))
+         [_ curr-moments] current-turn
+         last-moment? (= (inc moment#) (count curr-moments))
+         [_ prev-moments] (first prev-turns)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline"}
-                 [:div {:hx-get (str "/timeline/" (inc turn)) :hx-trigger "keyup[keyCode==40] from:body"}]
-                 (when (> turn 0)
-                   [:div {:hx-get (str "/timeline/" (dec turn)) :hx-trigger "keyup[keyCode==38] from:body"}])
-                 [:p "Current turn " turn]
+                 [:div {:hx-get (if last-moment?
+                                  (str "/timeline/" (inc turn#) "?moment=0")
+                                  (str "/timeline/" turn# "?moment=" (inc moment#)))
+                        :hx-trigger "keyup[keyCode==40] from:body"}]
+                 (when (> turn# 0)
+                   [:div {:hx-get (if (= moment# 0)
+                                    (str "/timeline/" (dec turn#) "?moment=" (dec (count prev-moments)))
+                                    (str "/timeline/" turn# "?moment=" (dec moment#)))
+                          :hx-trigger "keyup[keyCode==38] from:body"}])
+                 [:p "Current turn " turn#]
                  (->> prev-turns
                       (mapv (fn [[turn moments]]
-                              (let [last-moment (peek moments)
+                              (let [viewed-moments (reverse moments)
+                                    last-moment (last viewed-moments)
                                     {:state/keys [entities]} last-moment]
                                 [:div
                                  [:p (str "Turn #" (or turn 0))]
                                  [:p (str entities)]
-                                 [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])))
+                                 [:ol (->> viewed-moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])))
                       rseq)
-                 (let [[turn moments] current-turn
-                       last-moment (peek moments)
+                 (let [viewed-moments (take (inc moment#) (reverse curr-moments))
+                       last-moment (last viewed-moments)
                        {:state/keys [entities]} last-moment]
                    [:div
-                    [:p (str "Turn #" (or turn 0))]
+                    [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
-                    [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])])))))
+                    [:ol (->> viewed-moments
+                              (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])])))))
 
 (defn battle-html [turn]
   (render-file "battle.html" {:timeline-html (timeline-html turn)}))
 
 (defn get-timeline [req turn]
-  (let [turn (Integer/valueOf turn)
-        moment (or (some-> (:query-string req) query->vec :moment) 1)]
+  (let [turn# (Integer/valueOf turn)
+        moment# (or (some->> (:query-string req) query->map :moment Integer/valueOf) 0)]
     (if (htmx? req)
-      (timeline-html turn moment)
-      (battle-html turn))))
+      (timeline-html turn# moment#)
+      (battle-html turn#))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
