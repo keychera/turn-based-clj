@@ -62,7 +62,6 @@
 (defmethod unleash-effect :debuff/poison
   [{:effect-data/keys [afflicted state]}]
   (let [afflicted-hp (select-one [:state/entities afflicted :attr/hp] state)
-        _ (tap> afflicted-hp)
         damage (Math/floor (/ afflicted-hp 10))]
     (->> state
          (transform [:state/entities afflicted :attr/hp] (fn [hp] (- hp damage)))
@@ -133,7 +132,7 @@
    (->> history
         (take (min limit (count history)))
         (reduce (fn [timeline alter-fn]
-                  (let [alter (do-eval 'timeline2 alter-fn)
+                  (let [alter (do-eval 'timeline alter-fn)
                         state (peek timeline)
                         new-history (alter state)
                         new-turn (inc (or (:state/turn state) 0))]

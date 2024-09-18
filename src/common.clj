@@ -2,6 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]))
 
+(defn htmx? [req] (get-in req [:headers "hx-request"]))
+
 (defn query->vec
   "parse str of shape 'a=1&b=2' to [[\"a\" 1] [\"b\" 2]]"
   [q] (->> (str/split q #"&")

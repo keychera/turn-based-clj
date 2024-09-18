@@ -9,50 +9,12 @@
 
 <body>
     <h3>battle in progress...</h3>
-    <div id="state" hx-post="/state"
-         hx-trigger="updown-event from:body"
-         hx-swap="innerHTML">
-        <p>Turn {{turn}}</p>
-        <ol>
-            {% for turn in timeline %}
-            <li>
-                <p>{{turn.state/entities}}</p>
-                <p><b>{{turn.state/desc}}</b></p>
-            </li>
-            {% endfor %}
-        </ol>
-    </div>
+    {{timeline-html|safe}}
     <div id="end">~~~</div>
-
-
 </body>
 
 <script>
     const endDiv = document.getElementById("end")
-
-    function upHandler() {
-        const updownEvent = new CustomEvent("updown-event", { detail: { direction: "up" } })
-        document.body.dispatchEvent(updownEvent)
-    }
-
-    function downHandler() {
-        const updownEvent = new CustomEvent("updown-event", { detail: { direction: "down" } })
-        document.body.dispatchEvent(updownEvent)
-    }
-
-    document.body.addEventListener('keydown', (event) => {
-        const callback = {
-            "ArrowUp": upHandler,
-            "ArrowDown": downHandler,
-        }[event.key]
-        callback?.()
-    })
-
-    document.body.addEventListener("htmx:beforeRequest", (event) => {
-        let triggeringUpdownEvent = event.detail.requestConfig.triggeringEvent
-        let direction = triggeringUpdownEvent.detail.direction
-        event.detail.requestConfig.parameters["direction"] = direction
-    })
 
     document.body.addEventListener("htmx:afterRequest", (event) => {
         let target = event.detail.target
