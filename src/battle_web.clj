@@ -79,10 +79,7 @@
           stop-server-fn (panas.reload/panas-server #'router
                                                     {:url  url
                                                      :port port}
-                                                    {:reloadable? (every-pred
-                                                                   (fn [{{:strs [hx-target hx-request]} :headers}]
-                                                                     (or (not hx-request) (= "main-body" hx-target)))
-                                                                   panas.default/reloadable?)})
+                                                    {})
           stop-watcher-fn (panas.reload/run-file-watcher root-url router watch-dir)]
       (println "[panas] serving" root-url)
       (fn []
