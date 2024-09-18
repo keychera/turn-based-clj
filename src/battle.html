@@ -10,18 +10,20 @@
 <body>
     <h3>battle in progress...</h3>
     {{timeline-html|safe}}
-    <div id="end">~~~</div>
+    <div id="end" style="height: 12rem;">~~~</div>
 </body>
 
 <script>
     const endDiv = document.getElementById("end")
 
-    document.body.addEventListener("htmx:afterRequest", (event) => {
-        let target = event.detail.target
-        let isSuccessful = event.detail.successful
-        if (target.id == "state") {
-            endDiv.scrollIntoView()
+    window.addEventListener("keydown", function (e) {
+        if (["ArrowUp", "ArrowDown"].indexOf(e.code) > -1) {
+            e.preventDefault();
         }
+    }, false);
+
+    document.body.addEventListener("keyup", (event) => {
+        endDiv.scrollIntoView()
     })
 </script>
 

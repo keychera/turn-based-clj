@@ -12,7 +12,7 @@
    (let [timeline (reduce-timeline initial-state @history turn#)
          timeline-per-turn (->> timeline (group-by :state/turn))
          curr-moments (get timeline-per-turn turn#)
-         prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first)) 
+         prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc moment#) (count curr-moments))
          [_ prev-moments] (last prev-turns)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline"}
@@ -26,24 +26,22 @@
                                     (str "/timeline/" turn# "?moment=" (dec moment#)))
                           :hx-trigger "keyup[keyCode==38] from:body"}])
                  [:p "Current turn " turn#]
-                 (->> prev-turns
-                      (map (fn [[turn moments]]
-                             (let [viewed-moments (reverse moments)
-                                   last-moment (last viewed-moments)
-                                   {:state/keys [entities]} last-moment]
-                               [:div
-                                [:p (str "Turn #" (or turn 0))]
-                                [:p (str entities)]
-                                [:ol (->> viewed-moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))
-                 (let [viewed-moments (take (inc moment#) (reverse curr-moments))
+                 (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
-                       {:state/keys [entities]} last-moment]
-                   (tap> (get timeline-per-turn turn#))
+                       {:state/keys [entities]} last-moment] 
                    [:div
                     [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
                     [:ol (->> viewed-moments
-                              (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])])))))
+                              (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])
+                 (->> prev-turns
+                      (map (fn [[turn moments]]
+                             (let [last-moment (last moments)
+                                   {:state/keys [entities]} last-moment]
+                               [:div
+                                [:p (str "Turn #" (or turn 0))]
+                                [:p (str entities)]
+                                [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))])))))
 
 (defn battle-html [turn]
   (render-file "battle.html" {:timeline-html (timeline-html turn)}))
@@ -89,11 +87,5 @@
       (println "[panas] serving" root-url)
       (fn []
         (stop-server-fn) (stop-watcher-fn))))
-  
-(let [timeline-per-turn (->> timeline (group-by :state/turn))]
-  (->> (dissoc timeline-per-turn 4)
-       (map (fn [[k v]] [k v]))
-       (sort-by first)
-       last))
 
   (stop-all-fn))
