@@ -4,7 +4,7 @@
             "name": "babashka repl",
             "projectType": "babashka",
             "autoSelectForJackIn": true,
-            "afterCLJReplJackInCode": "(do  (require 'panas.reload 'panas.default 'battle) (in-ns 'battle))"
+            "afterCLJReplJackInCode": "(do (require 'panas.reload 'panas.default 'battle-web) (in-ns 'battle-web))"
         }
     ],
     "html.format.wrapAttributes": "preserve-aligned",
