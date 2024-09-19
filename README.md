@@ -4,7 +4,9 @@
 
 - [x] simple description
 - [x] connect battle_web to timeline2.clj (and sunset timeline.clj)
-- [ ] battle web increment moment instead of turn, and displaying grouped turn
+- [x] battle web increment instant instead of moment, and displaying grouped instants
+  - [x] vocab shift, turn -> moment, moment -> instant
+- [ ] turn order and poison on own's turn
 - [ ] player stat and damage calculation
 - [ ] follow up
 - [ ] effect cauldron

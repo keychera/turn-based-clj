@@ -2,7 +2,7 @@
   (:require [com.rpl.specter :as sp :refer [select select-one setval transform]]))
 
 (def initial-state
-  #:state{:turn 0
+  #:state{:moment 0
           :desc "battle begins"
           :entities #:actor{:hilda #:attr{:hp 560 :mp 200}
                             :aluxes #:attr{:hp 800 :mp 10}}})
@@ -34,7 +34,7 @@
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
                       #(assoc % buff #:effect-data{:source actor :duration duration}))
-           (setval [:state/desc] (str actor " mafic attack is buffed!"))))))
+           (setval [:state/desc] (str actor " magic attack is buffed!"))))))
 
 (defn poison [actor target]
   (fn [state]
@@ -69,7 +69,7 @@
          (setval [:state/desc] (str afflicted " is poisoned! receives " damage " damage!")))))
 
 (defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}]
-  (->> state (setval [:state/desc] (str "notthing happened for " effect-name))))
+  (->> state (setval [:state/desc] (str "nothing happened for " effect-name))))
 
 ;; History
 
@@ -91,7 +91,7 @@
 
 ;; Engine
 
-(def turn (atom 0))
+(def moment (atom 0))
 
 (defn entities->effect-data [entities]
   (->> entities
@@ -136,9 +136,9 @@
                   (let [alter (do-eval 'timeline alter-fn)
                         state (peek timeline)
                         new-history (alter state)
-                        new-turn (inc (or (:state/turn state) 0))]
+                        new-moment (inc (or (:state/moment state) 0))]
                     (-> timeline
-                        (conj (-> new-history (assoc :state/turn new-turn)))
+                        (conj (-> new-history (assoc :state/moment new-moment)))
                         (reduce-effects))))
                 [initial-state]))))
 
