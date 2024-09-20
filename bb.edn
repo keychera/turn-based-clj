@@ -1,3 +1,9 @@
 {:paths ["src"]
  :deps {io.github.keychera/panas.reload {:git/sha "113b444c3132dfc674ec3b5aba241a04d4de388e"}
-        com.rpl/specter {:mvn/version "1.1.4"}}}
+        com.rpl/specter {:mvn/version "1.1.4"}}
+ :tasks
+ {test-all {:extra-paths ["test"]
+            :extra-deps {io.github.cognitect-labs/test-runner {:git/sha "9d36f36ff541dac680a05010e4348c744333f191"}}
+            :task (exec 'cognitect.test-runner.api/test)
+            :exec-args {:dirs ["test"]}
+            :org.babashka/cli {:coerce {:nses [:symbol] :vars [:symbol]}}}}}
