@@ -38,7 +38,7 @@
 
 (defn poison [actor target]
   (fn [state]
-    (let [manacost 30 damage 5 debuff :debuff/poison duration -1]
+    (let [manacost 30 damage 5 debuff :debuff/poison duration 3]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities target :attr/hp] #(- % damage))
@@ -58,36 +58,54 @@
 
 ;; Effects
 
+(defn reduce-duration [{:effect-data/keys [duration affected effect-name]} state]
+  (let [new-duration (dec duration)]
+    (cond
+      (= new-duration 0) (->> state (setval [:state/entities affected :attr/effect effect-name] sp/NONE))
+      :else              (->> state (setval [:state/entities affected :attr/effect effect-name :effect-data/duration] new-duration)))))
+
 (defmulti unleash-effect :effect-data/effect-name)
 
 (defmethod unleash-effect :debuff/poison
-  [{:effect-data/keys [afflicted state]}]
-  (let [afflicted-hp (select-one [:state/entities afflicted :attr/hp] state)
-        damage (Math/floor (/ afflicted-hp 10))]
-    (->> state
-         (transform [:state/entities afflicted :attr/hp] (fn [hp] (- hp damage)))
-         (setval [:state/desc] (str afflicted " is poisoned! receives " damage " damage!")))))
+  [{:effect-data/keys [affected whose event state] :as effect-data}]
+  (when (and (= event :event/on-moment-begins)
+             (= affected whose))
+    (let [affected-hp (select-one [:state/entities affected :attr/hp] state)
+          damage (Math/floor (/ affected-hp 10))]
+      (->> state
+           (reduce-duration effect-data)
+           (transform [:state/entities affected :attr/hp] (fn [hp] (- hp damage)))
+           (setval [:state/desc] (str affected " is poisoned! receives " damage " damage!"))))))
 
-(defmethod unleash-effect :default [{:effect-data/keys [effect-name state]}]
-  (->> state (setval [:state/desc] (str "nothing happened for " effect-name))))
+(defmethod unleash-effect :default [_] nil)
 
 ;; History
 
 (def history
-  (atom ['nothing-happened
-         '(-> :actor/hilda (poison :actor/aluxes))
-         '(-> :actor/aluxes (basic-attack :actor/hilda))
-         '(-> :actor/hilda (charm :actor/aluxes))
-         'nothing-happened
-         '(-> :actor/aluxes (basic-attack :actor/hilda))
-         '(-> :actor/hilda (magic-up))
-         'nothing-happened
-         '(-> :actor/aluxes (basic-attack :actor/hilda))
-         '(-> :actor/hilda (fireball :actor/aluxes))
-         '(-> :actor/aluxes (basic-attack :actor/hilda))
-         'nothing-happened
-         'nothing-happened
-         'nothing-happened]))
+  (atom [#:moment{:whose  :actor/hilda
+                  :action '(-> :actor/hilda (poison :actor/aluxes))}
+         #:moment{:whose  :actor/aluxes
+                  :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+
+         #:moment{:whose  :actor/hilda
+                  :action '(-> :actor/hilda (magic-up))}
+         #:moment{:whose  :actor/aluxes
+                  :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+
+         #:moment{:whose  :actor/hilda
+                  :action '(-> :actor/hilda (fireball :actor/aluxes))}
+         #:moment{:whose  :actor/aluxes
+                  :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+
+         #:moment{:whose  :actor/hilda
+                  :action '(-> :actor/hilda (fireball :actor/aluxes))}
+         #:moment{:whose  :actor/aluxes
+                  :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+
+         #:moment{:whose  :actor/hilda
+                  :action '(-> :actor/hilda (fireball :actor/aluxes))}
+         #:moment{:whose  :actor/aluxes
+                  :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
 ;; Engine
 
@@ -95,31 +113,27 @@
 
 (defn entities->effect-data [entities]
   (->> entities
-       (mapcat (fn [[afflicted attr]]
+       (mapcat (fn [[affected attr]]
                  (->> (:attr/effect attr)
                       (map (fn [[effect-name effect-data]]
                              (assoc effect-data
                                     :effect-data/effect-name effect-name
-                                    :effect-data/afflicted afflicted))))))))
+                                    :effect-data/affected affected))))))))
 
-(defn apply-effect [effect-data state]
-  (let [{:effect-data/keys [afflicted effect-name duration]} effect-data
-        new-duration (dec duration)
-        state-after-effect (unleash-effect (assoc effect-data :effect-data/state state))]
-    (cond
-      (= duration -1)    state-after-effect
-      (= new-duration 0) (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name] sp/NONE))
-      :else              (->> state-after-effect (setval [:state/entities afflicted :attr/effect effect-name :effect-data/duration] new-duration)))))
-
-(defn reduce-effects [original-timeline]
+(defn reduce-effects [original-timeline moment event]
   (let [state (peek original-timeline)
-        all-afflicted (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
-        afflictions (entities->effect-data all-afflicted)]
-    (->> afflictions
+        all-affected (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
+        effects (entities->effect-data all-affected)]
+    (->> effects
          (reduce (fn [timeline effect-data]
                    (let [state (peek timeline)
-                         new-history (apply-effect effect-data state)]
-                     (-> timeline (conj new-history))))
+                         whose (:moment/whose moment)
+                         new-moment (unleash-effect (assoc effect-data
+                                                           :effect-data/whose whose
+                                                           :effect-data/event event
+                                                           :effect-data/state state))]
+                     (cond-> timeline
+                       (some? new-moment) (conj new-moment))))
                  original-timeline))))
 
 (defn do-eval [namespace-sym form]
@@ -132,14 +146,17 @@
   ([initial-state history limit]
    (->> history
         (take (min limit (count history)))
-        (reduce (fn [timeline alter-fn]
-                  (let [alter (do-eval 'timeline alter-fn)
+        (reduce (fn [timeline {:moment/keys [whose action] :as moment}]
+                  (let [alter (do-eval 'timeline action)
                         state (peek timeline)
-                        new-history (alter state)
-                        new-moment (inc (or (:state/moment state) 0))]
-                    (-> timeline
-                        (conj (-> new-history (assoc :state/moment new-moment)))
-                        (reduce-effects))))
+                        timeline0 (conj timeline (-> state
+                                                     (update :state/moment inc)
+                                                     (assoc :state/desc (str "new moment for" whose))))
+                        timeline1 (reduce-effects timeline0 moment :event/on-moment-begins)
+                        state (peek timeline1)
+                        timeline2 (conj timeline1 (alter state))
+                        timeline3 (reduce-effects timeline2 moment :event/on-moment-ends)]
+                    timeline3))
                 [initial-state]))))
 
 (comment

@@ -14,7 +14,7 @@
          curr-instants (get timeline-per-moment moment#)
          prev-moments (->> (dissoc timeline-per-moment moment#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc instant#) (count curr-instants))
-         [_ prev-moments] (last prev-moments)]
+         [_ prev-instants] (last prev-moments)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline"}
                  [:div {:hx-get (if last-moment?
                                   (str "/timeline/" (inc moment#) "?moment=0")
@@ -22,7 +22,7 @@
                         :hx-trigger "keyup[keyCode==40] from:body"}]
                  (when (> moment# 0)
                    [:div {:hx-get (if (= instant# 0)
-                                    (str "/timeline/" (dec moment#) "?moment=" (dec (count prev-moments)))
+                                    (str "/timeline/" (dec moment#) "?moment=" (dec (count prev-instants)))
                                     (str "/timeline/" moment# "?moment=" (dec instant#)))
                           :hx-trigger "keyup[keyCode==38] from:body"}])
                  [:p "Current moment " moment#]
