@@ -4,14 +4,14 @@
             [common :refer [htmx? query->map]]
             [engine.timeline :refer [reduce-timeline]]
             [hiccup2.core :refer [html]]
-            [model.hilda :refer [history initial-state]]
+            [model.hilda :refer [battle-data initial-state]]
             [selmer.parser :refer [render-file]]))
 
 (defn timeline-html
   ([moment#] (timeline-html moment# 0))
   ([moment# instant#]
-   (let [timeline (reduce-timeline 'model.hilda initial-state @history moment#)
-         timeline-per-moment (->> timeline (group-by :state/moment))
+   (let [timeline (reduce-timeline 'model.hilda initial-state battle-data moment#)
+         timeline-per-moment (->> timeline (group-by :state/turn))
          curr-instants (get timeline-per-moment moment#)
          prev-moments (->> (dissoc timeline-per-moment moment#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc instant#) (count curr-instants))
@@ -62,7 +62,6 @@
       [:get  ["timeline" moment]] {:body (get-timeline req moment)}
       :else {:status 404
              :body   "not found"})))
-
 
 (comment
   (require 'panas.reload 'panas.default)

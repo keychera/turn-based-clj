@@ -22,44 +22,59 @@
 
 (defmethod unleash-effect :default [_] nil)
 
-(defn reduce-effects [original-timeline moment event]
+(defn reduce-effects [original-timeline event]
   (let [state (peek original-timeline)
         all-affected (select [:state/entities sp/ALL (sp/selected? (fn [[_ attr]] (:attr/effect attr)))] state)
         effects (entities->effect-data all-affected)]
     (->> effects
          (reduce (fn [timeline effect-data]
                    (let [state (peek timeline)
-                         whose (:moment/whose moment)
-                         new-moment (unleash-effect (assoc effect-data
-                                                           :effect-data/whose whose
-                                                           :effect-data/event event
-                                                           :effect-data/state state))]
+                         new-moment (unleash-effect (assoc effect-data :effect-data/event event :effect-data/state state))]
                      (cond-> timeline
                        (some? new-moment) (conj new-moment))))
                  original-timeline))))
 
-(defn do-eval [namespace-sym form]
-  (require namespace-sym)
-  (let [user-ns (create-ns namespace-sym)]
+(defn do-eval [ns-symbol form]
+  (require ns-symbol)
+  (let [user-ns (create-ns ns-symbol)]
     (binding [*ns* user-ns] (clojure.core/eval form))))
 
+(defn fn-ref [ns-symbol fn-name]
+  (require ns-symbol)
+  (eval (read-string (str "#'" ns-symbol "/" fn-name))))
+
 (defn reduce-timeline
-  ([model initial-state history]
-   (reduce-timeline model initial-state history (count history)))
-  ([model initial-state history limit]
-   (->> history
-        (take (min limit (count history)))
-        (reduce (fn [timeline {:moment/keys [action] :as moment}]
-                  (let [alter (do-eval model action)
-                        state (peek timeline)
-                        new-timeline (conj [] (-> state (update :state/moment inc)))
-                        new-timeline (reduce-effects new-timeline moment :event/on-moment-begins)
-                        state (peek new-timeline)
-                        new-timeline (conj new-timeline (alter state))
-                        new-timeline (reduce-effects new-timeline moment :event/on-moment-ends)
-                        new-timeline (drop 1 new-timeline)]
-                    (into timeline new-timeline)))
-                [initial-state]))))
+  ([model initial-state battle-data]
+   (reduce-timeline model initial-state battle-data (count (-> battle-data :battle-data/history-atom deref))))
+  ([model initial-state battle-data limit]
+   (let [{:battle-data/keys [history-atom]} battle-data
+         turn-model (fn-ref model "turn-model")
+         get-moments-per-turn (turn-model battle-data)
+         limited-history (take limit @history-atom)]
+     (loop [timeline [initial-state]
+            [moments-per-turn remaining-moments] (get-moments-per-turn limited-history)]
+       (let [state (peek timeline)
+             new-timeline (conj [] (-> state (update :state/turn inc)))
+             new-timeline (reduce-effects new-timeline :event/on-turn-begins)
+             new-timeline
+             (loop [moment-timeline new-timeline
+                    [moment & remaining-moments] moments-per-turn]
+               (let [{:moment/keys [action]} moment
+
+                     moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
+                     alter (do-eval model action)
+                     state (peek moment-timeline)
+                     moment-timeline (conj moment-timeline (alter state))
+                     moment-timeline (reduce-effects moment-timeline :event/on-moment-ends)]
+                 (if (empty? remaining-moments)
+                   moment-timeline
+                   (recur moment-timeline remaining-moments))))
+             new-timeline (reduce-effects new-timeline :event/on-turn-ends)
+             new-timeline (drop 1 new-timeline)
+             updated-timeline (into timeline new-timeline)]
+         (if (empty? remaining-moments)
+           updated-timeline
+           (recur updated-timeline (get-moments-per-turn remaining-moments))))))))
 
 (comment
   (add-tap #(def last-tap %))
