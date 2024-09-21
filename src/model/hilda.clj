@@ -2,7 +2,6 @@
   (:require [com.rpl.specter :refer [select-one setval transform]]
             [engine.timeline :refer [unleash-effect reduce-effect-duration]]))
 
-
 (defn nothing-happened [state]
   (->> state (setval [:state/desc] "nothing happened!")))
 
@@ -30,15 +29,16 @@
                       #(assoc % buff #:effect-data{:source actor :duration duration}))
            (setval [:state/desc] (str actor " magic attack is buffed!"))))))
 
-(defn poison [actor target]
+(defn poison
+  ([actor target] (poison actor target #:effect-data{:duration 3}))
+  ([actor target {:effect-data/keys [duration]}]
   (fn [state]
-    (let [manacost 30 damage 5 debuff :debuff/poison duration 3]
+    (let [manacost 30 debuff :debuff/poison]
       (->> state
-           (transform [:state/entities actor :attr/mp] #(- % manacost))
-           (transform [:state/entities target :attr/hp] #(- % damage))
-           (transform [:state/entities target :attr/effect]
+           (transform [:state/entities actor :attr/mp] #(- % manacost)) 
+           (transform [:state/entities target :attr/effect] 
                       #(assoc % debuff #:effect-data{:source actor :duration duration}))
-           (setval [:state/desc] (str actor " poisons " target " for " damage " damage! " target " is now poisoned!"))))))
+           (setval [:state/desc] (str actor " poisons " target"! " target " is now poisoned!")))))))
 
 (defmethod unleash-effect :debuff/poison
   [{:effect-data/keys [affected whose event state] :as effect-data}]

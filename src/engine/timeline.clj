@@ -39,30 +39,29 @@
                  original-timeline))))
 
 (defn do-eval [namespace-sym form]
+  (require namespace-sym)
   (let [user-ns (create-ns namespace-sym)]
     (binding [*ns* user-ns] (clojure.core/eval form))))
 
 (defn reduce-timeline
   ([model initial-state history]
-   (reduce-timeline initial-state history model (count history)))
+   (reduce-timeline model initial-state history (count history)))
   ([model initial-state history limit]
    (->> history
         (take (min limit (count history)))
-        (reduce (fn [timeline {:moment/keys [whose action] :as moment}]
+        (reduce (fn [timeline {:moment/keys [action] :as moment}]
                   (let [alter (do-eval model action)
                         state (peek timeline)
-                        timeline0 (conj timeline (-> state
-                                                     (update :state/moment inc)
-                                                     (assoc :state/desc (str "new moment for" whose))))
-                        timeline1 (reduce-effects timeline0 moment :event/on-moment-begins)
-                        state (peek timeline1)
-                        timeline2 (conj timeline1 (alter state))
-                        timeline3 (reduce-effects timeline2 moment :event/on-moment-ends)]
-                    timeline3))
+                        new-timeline (conj [] (-> state (update :state/moment inc)))
+                        new-timeline (reduce-effects new-timeline moment :event/on-moment-begins)
+                        state (peek new-timeline)
+                        new-timeline (conj new-timeline (alter state))
+                        new-timeline (reduce-effects new-timeline moment :event/on-moment-ends)
+                        new-timeline (drop 1 new-timeline)]
+                    (into timeline new-timeline)))
                 [initial-state]))))
 
 (comment
-
   (add-tap #(def last-tap %))
   (add-tap #(println %))
   last-tap)
