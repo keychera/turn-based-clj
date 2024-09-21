@@ -1,32 +1,8 @@
 (ns hilda-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [engine.timeline :refer [reduce-timeline]]
-            [clojure.string :as str]))
-
-(def test-initial-state
-  #:state{:turn 0
-          :desc "battle begins"
-          :entities #:actor{:hilda #:attr{:hp 560 :mp 200}
-                            :aluxes #:attr{:hp 800 :mp 10}}})
-
-(def test-battle-data
-  #:battle-data
-   {:actors [:actor/aluxes :actor/hilda]
-    :history-atom
-    (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (magic-up))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (magic-up))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}])})
+            [test-data :refer [test-battle-data test-initial-state]]))
 
 (deftest test-poison
   (testing "Test poison interaction"
@@ -44,4 +20,4 @@
       (is (= 3 (:state/turn (nth actual-timeline 7)))))))
 
 (comment
-  (reduce-timeline 'model.hilda test-initial-state test-battle-data 4))
+  (reduce-timeline 'model.hilda test-initial-state test-battle-data 0))

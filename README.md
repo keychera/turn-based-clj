@@ -7,7 +7,7 @@
 - [x] battle web increment instant instead of moment, and displaying grouped instants
   - [x] vocab shift, turn -> moment, moment -> instant
 - [x] poison on own's turn
-- [ ] test
+- [x] test
 - [ ] let effect be potentially infinite
 - [ ] player stat and damage calculation
 - [ ] follow up

@@ -10,8 +10,9 @@
 (defn timeline-html
   ([moment#] (timeline-html moment# 0))
   ([moment# instant#]
-   (let [timeline (reduce-timeline 'model.hilda initial-state battle-data moment#)
-         timeline-per-moment (->> timeline (group-by :state/turn))
+   (let [;; TODO fix how we display this
+         timeline (reduce-timeline 'model.hilda initial-state battle-data moment#) 
+         timeline-per-moment (->> timeline (group-by :state/turn)) 
          curr-instants (get timeline-per-moment moment#)
          prev-moments (->> (dissoc timeline-per-moment moment#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc instant#) (count curr-instants))
@@ -66,6 +67,9 @@
 (comment
   (require 'panas.reload 'panas.default)
 
+  (add-tap #(def last-tap %))
+  (add-tap #(println %))
+
   (def stop-all-fn
     (let [watch-dir "src" url "localhost" port 4242
           root-url (str "http://" (or url "0.0.0.0") ":" (or port 8090))
@@ -77,5 +81,7 @@
       (println "[panas] serving" root-url)
       (fn []
         (stop-server-fn) (stop-watcher-fn))))
+  
+  (router {:request-method :get :uri "/timeline/1"})
 
   (stop-all-fn))
