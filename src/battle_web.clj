@@ -2,14 +2,15 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
+            [engine.timeline :refer [reduce-timeline]]
             [hiccup2.core :refer [html]]
-            [selmer.parser :refer [render-file]]
-            [timeline :refer [history initial-state reduce-timeline moment]]))
+            [model.hilda :refer [history initial-state]]
+            [selmer.parser :refer [render-file]]))
 
 (defn timeline-html
   ([moment#] (timeline-html moment# 0))
   ([moment# instant#]
-   (let [timeline (reduce-timeline initial-state @history moment#)
+   (let [timeline (reduce-timeline 'model.hilda initial-state @history moment#)
          timeline-per-moment (->> timeline (group-by :state/moment))
          curr-instants (get timeline-per-moment moment#)
          prev-moments (->> (dissoc timeline-per-moment moment#) (map (fn [[k v]] [k v])) (sort-by first >))
@@ -65,13 +66,6 @@
 
 (comment
   (require 'panas.reload 'panas.default)
-
-  @moment
-  (swap! moment inc)
-  (add-tap #(def last-tap %))
-  (add-tap println)
-  last-tap
-
 
   (def stop-all-fn
     (let [watch-dir "src" url "localhost" port 4242
