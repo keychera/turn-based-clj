@@ -8,52 +8,52 @@
             [selmer.parser :refer [render-file]]))
 
 (defn timeline-html
-  ([moment#] (timeline-html moment# 0))
-  ([moment# instant#]
+  ([turn#] (timeline-html turn# 0))
+  ([turn# moment#]
    (let [;; TODO fix how we display this
-         timeline (reduce-timeline 'model.hilda initial-state battle-data moment#) 
-         timeline-per-moment (->> timeline (group-by :state/turn)) 
-         curr-instants (get timeline-per-moment moment#)
-         prev-moments (->> (dissoc timeline-per-moment moment#) (map (fn [[k v]] [k v])) (sort-by first >))
-         last-moment? (= (inc instant#) (count curr-instants))
-         [_ prev-instants] (last prev-moments)]
+         timeline (reduce-timeline 'model.hilda initial-state battle-data turn#)
+         timeline-per-turn (->> timeline (group-by :state/turn))
+         curr-moments (get timeline-per-turn turn#)
+         prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
+         last-moment? (= (inc moment#) (count curr-moments))
+         [_ prev-moments] (last prev-turns)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline"}
                  [:div {:hx-get (if last-moment?
-                                  (str "/timeline/" (inc moment#) "?moment=0")
-                                  (str "/timeline/" moment# "?moment=" (inc instant#)))
+                                  (str "/timeline/" (inc turn#) "?moment=0")
+                                  (str "/timeline/" turn# "?moment=" (inc moment#)))
                         :hx-trigger "keyup[keyCode==40] from:body"}]
-                 (when (> moment# 0)
-                   [:div {:hx-get (if (= instant# 0)
-                                    (str "/timeline/" (dec moment#) "?moment=" (dec (count prev-instants)))
-                                    (str "/timeline/" moment# "?moment=" (dec instant#)))
+                 (when (> turn# 0)
+                   [:div {:hx-get (if (= moment# 0)
+                                    (str "/timeline/" (dec turn#) "?moment=" (dec (count prev-moments)))
+                                    (str "/timeline/" turn# "?moment=" (dec moment#)))
                           :hx-trigger "keyup[keyCode==38] from:body"}])
-                 [:p "Current moment " moment#]
-                 (let [viewed-moments (take (inc instant#) curr-instants)
+                 [:p "Current turn " turn#]
+                 (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
                        {:state/keys [entities]} last-moment]
                    [:div
-                    [:p (str "Moment #" (or moment# 0))]
+                    [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
                     [:ol (->> viewed-moments
                               (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])
-                 (->> prev-moments
-                      (map (fn [[moment# instants]]
-                             (let [last-moment (last instants)
+                 (->> prev-turns
+                      (map (fn [[turn# moments]]
+                             (let [last-moment (last moments)
                                    {:state/keys [entities]} last-moment]
                                [:div
-                                [:p (str "Moment #" (or moment# 0))]
+                                [:p (str "Moment #" (or turn# 0))]
                                 [:p (str entities)]
-                                [:ol (->> instants (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))])))))
+                                [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))])))))
 
 (defn battle-html [moment#]
   (render-file "battle.html" {:timeline-html (timeline-html moment#)}))
 
 (defn get-timeline [req moment]
-  (let [moment# (Integer/valueOf moment)
-        instant# (or (some->> (:query-string req) query->map :moment Integer/valueOf) 0)]
+  (let [turn# (Integer/valueOf moment)
+        moment# (or (some->> (:query-string req) query->map :moment Integer/valueOf) 0)]
     (if (htmx? req)
-      (timeline-html moment# instant#)
-      (battle-html moment#))))
+      (timeline-html turn# moment#)
+      (battle-html turn#))))
 
 (defn router [req]
   (let [paths (some-> (:uri req) (str/split #"/") rest vec)
@@ -81,7 +81,7 @@
       (println "[panas] serving" root-url)
       (fn []
         (stop-server-fn) (stop-watcher-fn))))
-  
+
   (router {:request-method :get :uri "/timeline/1"})
 
   (stop-all-fn))

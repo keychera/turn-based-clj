@@ -20,4 +20,4 @@
       (is (= 3 (:state/turn (nth actual-timeline 7)))))))
 
 (comment
-  (reduce-timeline 'model.hilda test-initial-state test-battle-data 0))
+  (reduce-timeline 'model.hilda test-initial-state test-battle-data 1))

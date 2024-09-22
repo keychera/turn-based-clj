@@ -39,32 +39,24 @@
   (let [user-ns (create-ns ns-symbol)]
     (binding [*ns* user-ns] (clojure.core/eval form))))
 
-(defn fn-ref [ns-symbol fn-name]
-  (require ns-symbol)
-  (eval (read-string (str "#'" ns-symbol "/" fn-name))))
-
 (defn reduce-timeline
   ([model initial-state battle-data]
-   (reduce-timeline model initial-state battle-data (count (-> battle-data :battle-data/history-atom deref))))
-  ([model initial-state battle-data limit]
-   (if (= limit 0)
-     [initial-state]
-     (let [{:battle-data/keys [history-atom]} battle-data
-           turn-model (fn-ref model "turn-model")
-           get-moments-per-turn (turn-model battle-data)
-           history @history-atom
-           limited-history (take (min limit (count history)) history)]
-
-       (loop [timeline [initial-state]
-              [moments-per-turn remaining-moments] (get-moments-per-turn limited-history)]
-         (let [state (peek timeline)
+   (reduce-timeline model initial-state battle-data Integer/MAX_VALUE))
+  ([model initial-state battle-data turn-limit]
+   (let [{:battle-data/keys [num-moment-per-turn history-atom]} battle-data
+         history @history-atom]
+     (loop [timeline [initial-state] limit turn-limit remaining-turns history]
+       (if (or (= limit 0) (empty? remaining-turns))
+         timeline
+         (let [moments-per-turn (take num-moment-per-turn remaining-turns)
+               remaining-turns (drop num-moment-per-turn remaining-turns)
+               state (peek timeline)
                new-timeline (conj [] (-> state (update :state/turn inc)))
                new-timeline (reduce-effects new-timeline :event/on-turn-begins)
                new-timeline
                (loop [moment-timeline new-timeline
                       [moment & remaining-moments] moments-per-turn]
                  (let [{:moment/keys [action]} moment
-
                        moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
                        alter (do-eval model action)
                        state (peek moment-timeline)
@@ -76,9 +68,7 @@
                new-timeline (reduce-effects new-timeline :event/on-turn-ends)
                new-timeline (drop 1 new-timeline)
                updated-timeline (into timeline new-timeline)]
-           (if (empty? remaining-moments)
-             updated-timeline
-             (recur updated-timeline (get-moments-per-turn remaining-moments)))))))))
+           (recur updated-timeline (dec limit) remaining-turns)))))))
 
 (comment
   (add-tap #(def last-tap %))

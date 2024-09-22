@@ -72,7 +72,8 @@
 
 (def battle-data
   #:battle-data
-   {:actors [:actor/hilda :actor/aluxes]
+   {:num-moment-per-turn 2
+    :actors [:actor/hilda :actor/aluxes]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (poison :actor/aluxes))}
@@ -109,4 +110,4 @@
   nothing-happened basic-attack fireball magic-up poison charm
   turn-model
 
-  (reduce-timeline 'model.hilda initial-state battle-data))
+  (reduce-timeline 'model.hilda initial-state battle-data 1))

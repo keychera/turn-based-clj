@@ -8,7 +8,8 @@
 
 (def test-battle-data
   #:battle-data
-   {:actors [:actor/aluxes :actor/hilda]
+   {:num-moment-per-turn 2
+    :actors [:actor/aluxes :actor/hilda]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
