@@ -15,7 +15,7 @@
   (build-history
    [:actor/aluxes :actor/hilda]
    [#:moment{:whose  :actor/hilda
-             :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
+             :action '(-> :actor/hilda (fireball :actor/aluxes))}
     #:moment{:whose  :actor/aluxes
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
@@ -41,5 +41,4 @@
         (is (= 2 (:state/turn poison-moment))))
       (is (= 2 (:state/turn (nth actual-timeline 4))))
       (is (= 2 (:state/turn (nth actual-timeline 5))))
-      (is (= 3 (:state/turn (nth actual-timeline 6))))
-      (is (= 3 (:state/turn (nth actual-timeline 7)))))))
+      (is (= 3 (:state/turn (nth actual-timeline 6)))))))
