@@ -14,17 +14,11 @@
 </body>
 
 <script>
-    const endDiv = document.getElementById("end")
-
     window.addEventListener("keydown", function (e) {
         if (["ArrowUp", "ArrowDown"].indexOf(e.code) > -1) {
             e.preventDefault();
         }
     }, false);
-
-    document.body.addEventListener("keyup", (event) => {
-        endDiv.scrollIntoView()
-    })
 </script>
 
 </html>
