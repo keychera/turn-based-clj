@@ -8,12 +8,16 @@
   - [x] ~~vocab shift, turn -> moment, moment -> instant~~ reverted
 - [x] poison on own's turn
 - [x] test
+- [ ] diff visuals
+- [ ] events to latch on and richer effect trigger
 - [ ] let effect be potentially infinite
 - [ ] follow up
 - [ ] player stat and damage calculation
 - [ ] effect cauldron
 - [ ] player input
 - [ ] define what is shown to the player and what is kept being in the background
+- [ ] modular visuals
+- [ ] :rpj
 - [ ] real model
   - [ ] topaz
   - [ ] hilda
