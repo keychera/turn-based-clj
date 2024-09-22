@@ -10,18 +10,19 @@
 (defn timeline-html
   ([turn#] (timeline-html turn# 0))
   ([turn# moment#]
-   (let [;; TODO fix how we display this
-         timeline (reduce-timeline 'model.hilda initial-state battle-data turn#)
+   (let [timeline (reduce-timeline 'model.hilda initial-state battle-data turn#)
          timeline-per-turn (->> timeline (group-by :state/turn))
          curr-moments (get timeline-per-turn turn#)
          prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc moment#) (count curr-moments))
+         last-turn? (:state/last-turn? (first curr-moments))
          [_ prev-moments] (last prev-turns)]
-     (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline"}
-                 [:div {:hx-get (if last-moment?
-                                  (str "/timeline/" (inc turn#) "?moment=0")
-                                  (str "/timeline/" turn# "?moment=" (inc moment#)))
-                        :hx-trigger "keyup[keyCode==40] from:body"}]
+     (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline" :hx-swap "outerHTML"}
+                 (when-not (and last-turn? last-moment?)
+                   [:div {:hx-get (if last-moment?
+                                    (str "/timeline/" (inc turn#) "?moment=0")
+                                    (str "/timeline/" turn# "?moment=" (inc moment#)))
+                          :hx-trigger "keyup[keyCode==40] from:body"}])
                  (when (> turn# 0)
                    [:div {:hx-get (if (= moment# 0)
                                     (str "/timeline/" (dec turn#) "?moment=" (dec (count prev-moments)))
@@ -41,7 +42,7 @@
                              (let [last-moment (last moments)
                                    {:state/keys [entities]} last-moment]
                                [:div
-                                [:p (str "Moment #" (or turn# 0))]
+                                [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]
                                 [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))])))))
 

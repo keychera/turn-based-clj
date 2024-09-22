@@ -51,20 +51,20 @@
          (let [moments-per-turn (take num-moment-per-turn remaining-turns)
                remaining-turns (drop num-moment-per-turn remaining-turns)
                state (peek timeline)
-               new-timeline (conj [] (-> state (update :state/turn inc)))
+               new-timeline (conj [] (cond-> (update state :state/turn inc)
+                                       (empty? remaining-turns) (assoc :state/last-turn? true)))
                new-timeline (reduce-effects new-timeline :event/on-turn-begins)
-               new-timeline
-               (loop [moment-timeline new-timeline
-                      [moment & remaining-moments] moments-per-turn]
-                 (let [{:moment/keys [action]} moment
-                       moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
-                       alter (do-eval model action)
-                       state (peek moment-timeline)
-                       moment-timeline (conj moment-timeline (alter state))
-                       moment-timeline (reduce-effects moment-timeline :event/on-moment-ends)]
-                   (if (empty? remaining-moments)
-                     moment-timeline
-                     (recur moment-timeline remaining-moments))))
+               new-timeline (loop [moment-timeline new-timeline
+                                   [moment & remaining-moments] moments-per-turn]
+                              (let [{:moment/keys [action]} moment
+                                    moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
+                                    alter (do-eval model action)
+                                    state (peek moment-timeline)
+                                    moment-timeline (conj moment-timeline (alter state))
+                                    moment-timeline (reduce-effects moment-timeline :event/on-moment-ends)]
+                                (if (empty? remaining-moments)
+                                  moment-timeline
+                                  (recur moment-timeline remaining-moments))))
                new-timeline (reduce-effects new-timeline :event/on-turn-ends)
                new-timeline (drop 1 new-timeline)
                updated-timeline (into timeline new-timeline)]
