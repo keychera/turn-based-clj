@@ -22,7 +22,7 @@
 
 (defn magic-up [actor]
   (fn [state]
-    (let [manacost 40 buff :buff/magic-up duration 3]
+    (let [manacost 40 buff :buff/magic-up duration -1]
       (->> state
            (transform [:state/entities actor :attr/mp] #(- % manacost))
            (transform [:state/entities actor :attr/effect]
@@ -76,7 +76,7 @@
     :actors [:actor/hilda :actor/aluxes]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes))}
+                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
@@ -95,6 +95,16 @@
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
+           #:moment{:whose  :actor/hilda
+                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
+           #:moment{:whose  :actor/aluxes
+                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+           
+           #:moment{:whose  :actor/hilda
+                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
+           #:moment{:whose  :actor/aluxes
+                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+           
            #:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (fireball :actor/aluxes))}
            #:moment{:whose  :actor/aluxes

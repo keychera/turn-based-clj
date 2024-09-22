@@ -15,8 +15,9 @@
 (defn reduce-effect-duration [{:effect-data/keys [duration affected effect-name]} state]
   (let [new-duration (dec duration)]
     (cond
+      (= duration -1) state
       (= new-duration 0) (->> state (setval [:state/entities affected :attr/effect effect-name] sp/NONE))
-      :else              (->> state (setval [:state/entities affected :attr/effect effect-name :effect-data/duration] new-duration)))))
+      :else (->> state (setval [:state/entities affected :attr/effect effect-name :effect-data/duration] new-duration)))))
 
 (defmulti unleash-effect :effect-data/effect-name)
 
