@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
             [engine.timeline :refer [reduce-timeline]]
+            [engine.triplestore :refer [get-attr get-entity]]
             [hiccup2.core :refer [html]]
             [model.hilda :refer [battle-data initial-state]]
             [selmer.parser :refer [render-file]]))
@@ -11,11 +12,11 @@
   ([turn#] (timeline-html turn# 0))
   ([turn# moment#]
    (let [timeline (reduce-timeline 'model.hilda initial-state battle-data turn#)
-         timeline-per-turn (->> timeline (group-by :state/turn))
+         timeline-per-turn (->> timeline (group-by #(get-attr % :info/state :state/turn)))
          curr-moments (get timeline-per-turn turn#)
          prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc moment#) (count curr-moments))
-         last-turn? (:state/last-turn? (first curr-moments))
+         last-turn? (get-attr (first curr-moments) :info/state :state/last-turn?)
          [_ prev-moments] (last prev-turns)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline" :hx-swap "outerHTML"}
                  (when-not (and last-turn? last-moment?)
@@ -31,20 +32,22 @@
                  [:p "Current turn " turn#]
                  (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
-                       {:state/keys [entities]} last-moment]
+                       entities (->> (get-attr last-moment :info/state :state/actors)
+                                     (mapv (fn [actor] [actor (get-entity last-moment actor)])))]
                    [:div
                     [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
                     [:ol (->> viewed-moments
-                              (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]])
+                              (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]])
                  (->> prev-turns
                       (map (fn [[turn# moments]]
                              (let [last-moment (last moments)
-                                   {:state/keys [entities]} last-moment]
+                                   entities (->> (get-attr last-moment :info/state :state/actors)
+                                                 (mapv (fn [actor] [actor (get-entity last-moment actor)])))]
                                [:div
                                 [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]
-                                [:ol (->> moments (map (fn [{:state/keys [desc]}] [:li  [:p [:b (str desc)]]])))]]))))])))))
+                                [:ol (->> moments (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]]))))])))))
 
 (defn battle-html [moment#]
   (render-file "battle.html" {:timeline-html (timeline-html moment#)}))

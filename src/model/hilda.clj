@@ -1,6 +1,6 @@
 (ns model.hilda
   (:require [engine.timeline :refer [reduce-effect-duration unleash-effect]]
-            [engine.triplestore :refer [gen-dynamic-eid get-entity query-one
+            [engine.triplestore :refer [gen-dynamic-eid get-attr query-one
                                         transform-entity]]))
 
 (defn nothing-happened [state]
@@ -52,8 +52,7 @@
 (defmethod unleash-effect :debuff/poison
   [{:effect-data/keys [affected event state] :as effect-data}]
   (when (= event :event/on-turn-begins)
-    (let [affected-entity (get-entity state affected)
-          affected-hp (:attr/hp affected-entity)
+    (let [affected-hp (get-attr state affected :attr/hp)
           damage (Math/floor (/ affected-hp 10))]
       (-> state
           (reduce-effect-duration effect-data)
@@ -91,7 +90,7 @@
     :actors [:actor/hilda :actor/aluxes]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
+                    :action '(-> :actor/hilda (poison :actor/aluxes))}
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
