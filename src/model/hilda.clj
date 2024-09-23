@@ -32,8 +32,8 @@
                                     state actor effect-name)
           effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
-          (transform-entity actor {:attr/mp #(- % manacost)})
-          (transform-entity actor {:attr/effect [:add effect-entity]})
+          (transform-entity actor {:attr/mp #(- % manacost)
+                                   :attr/effect [:add effect-entity]}) 
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration}) 
           (transform-entity :info/state {:state/desc (str actor " magic attack is buffed!")})))))
 

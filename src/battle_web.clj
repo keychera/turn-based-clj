@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
             [engine.timeline :refer [reduce-timeline]]
-            [engine.triplestore :refer [get-attr get-entity]]
+            [engine.triplestore :refer [get-attr get-entity query]]
             [hiccup2.core :refer [html]]
             [model.hilda :refer [battle-data initial-state]]
             [selmer.parser :refer [render-file]]))
@@ -33,20 +33,24 @@
                  (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
                        entities (->> (get-attr last-moment :info/state :state/actors)
-                                     (mapv (fn [actor] [actor (get-entity last-moment actor)])))]
+                                     (mapv (fn [actor] [actor (get-entity last-moment actor)])))
+                       effects (query '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
                    [:div
                     [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
+                    [:p (str effects)]
                     [:ol (->> viewed-moments
                               (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]])
                  (->> prev-turns
                       (map (fn [[turn# moments]]
                              (let [last-moment (last moments)
                                    entities (->> (get-attr last-moment :info/state :state/actors)
-                                                 (mapv (fn [actor] [actor (get-entity last-moment actor)])))]
+                                                 (mapv (fn [actor] [actor (get-entity last-moment actor)])))
+                                   effects (query '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
                                [:div
                                 [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]
+                                [:p (str effects)]
                                 [:ol (->> moments (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]]))))])))))
 
 (defn battle-html [moment#]
