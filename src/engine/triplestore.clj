@@ -27,13 +27,22 @@
 (defn remove-triples [store clause]
   (sp/setval [sp/ALL #(m/match? clause %)] sp/NONE store))
 
-(defn get-entity [store eid]
-  (->> (d/q '[:find ?effect-data ?data :in $ ?eid
-              :where [?eid ?effect-data ?data]]
-            store eid)
-       (into {})))
-
 (def query d/q)
 
 (defn query-one [query & inputs]
   (-> (apply d/q query inputs) first first))
+
+(defn get-entity [store eid]
+  (let [result (query '[:find ?attr ?attr-val :in $ ?eid
+                        :where [?eid ?attr ?attr-val]] store eid)]
+    (if (empty? result) nil (into {} result))))
+
+(defn get-attr [store eid attr]
+  (query-one '[:find ?attr-val :in $ ?eid ?attr
+               :where [?eid ?attr ?attr-val]]
+             store eid attr))
+
+(->> (query '[:find ?attr ?attr-val :in $ ?eid
+              :where [?eid ?attr ?attr-val]]
+            [[:actor/aluxes :hp 1]
+             [:actor/aluxes :p 1]] :actor/aluxes))

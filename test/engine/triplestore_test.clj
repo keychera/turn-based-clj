@@ -1,7 +1,8 @@
 (ns engine.triplestore-test
   (:require [clojure.test :refer [deftest is]]
-            [engine.triplestore :refer [gen-dynamic-eid get-entity query-one
-                                        remove-triples transform-entity]]))
+            [engine.triplestore :refer [gen-dynamic-eid get-attr get-entity
+                                        query-one remove-triples
+                                        transform-entity]]))
 
 (def store-with-no-dynamic-id
   [[:actor/hilda :attr/hp 410]
@@ -25,7 +26,13 @@
   (is (= #:attr{:hp 750 :mp 10 :effect 1}
          (get-entity store :actor/aluxes)))
   (is (= #:effect-data{:effect-name :debuff/poison :source :actor/hilda :duration 3}
-         (get-entity store 1))))
+         (get-entity store 1)))
+  (is (= nil (get-entity store :actor/topaz))))
+
+(deftest test-get-attr
+  (is (= 750 (get-attr store :actor/aluxes :attr/hp)))
+  (is (= nil (get-attr store :actor/hilda :attr/effect)))
+  (is (= nil (get-attr store :actor/topaz :attr/hp))))
 
 (deftest test-remove-triples
   (is (= [[:actor/hilda :attr/hp 410]
