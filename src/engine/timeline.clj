@@ -1,5 +1,6 @@
 (ns engine.timeline
-  (:require [engine.triplestore :refer [gen-dynamic-eid get-entity q-one
+  (:require [engine.triplestore :refer [gen-dynamic-eid get-entity query
+                                        query-one remove-triples
                                         transform-entity]]))
 
 (def battle-data
@@ -8,7 +9,7 @@
     :actors [:actor/hilda :actor/aluxes]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes))}
+                    :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
@@ -33,10 +34,12 @@
 
 
 ;; Engine
-(defn reduce-effect-duration [state {:effect-data/keys [effect-id duration]}]
+(defn reduce-effect-duration [state {:effect-data/keys [affected effect-id duration]}]
   (let [new-duration (dec duration)]
     (cond (= duration -1) state
-          (= new-duration 0) (transform-entity state effect-id {:effect-data/duration nil})
+          (= new-duration 0) (-> state
+                                 (remove-triples [affected :attr/effect effect-id])
+                                 (remove-triples [effect-id '_ '_]))
           :else (transform-entity state effect-id {:effect-data/duration new-duration}))))
 
 (defmulti unleash-effect :effect-data/effect-name)
@@ -45,7 +48,7 @@
 
 (defn reduce-effects [original-timeline event]
   (let [state (peek original-timeline)
-        effects-id (d/q '[:find ?affected ?effect-id :where [?affected :attr/effect ?effect-id]] state)]
+        effects-id (query '[:find ?affected ?effect-id :where [?affected :attr/effect ?effect-id]] state)]
     (->> effects-id
          (map (fn [[affected effects-id]] [affected effects-id (get-entity state effects-id)]))
          (reduce (fn [timeline [affected effect-id effect-data]]
@@ -73,10 +76,10 @@
   ([actor target {:effect-data/keys [duration]}]
    (fn [state]
      (let [manacost 30 debuff :debuff/poison
-           current-poison (q-one '[:find ?eid :in $ ?target ?name
-                                   :where [?target :attr/effect ?eid]
-                                   [?eid :effect-data/effect-name ?name]]
-                                 state target debuff)
+           current-poison (query-one '[:find ?eid :in $ ?target ?name
+                                       :where [?target :attr/effect ?eid]
+                                       [?eid :effect-data/effect-name ?name]]
+                                     state target debuff)
            poison-entity (or current-poison (gen-dynamic-eid state))]
        (-> state
            (transform-entity target {:attr/mp #(- % manacost)

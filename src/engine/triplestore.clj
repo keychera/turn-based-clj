@@ -24,8 +24,8 @@
                        :else (sp/setval [sp/ALL #(m/match? [eid attrkey '_] %)  sp/LAST] transformation store)))))
                original-store)))
 
-(defn remove-entity [store eid]
-  (sp/setval [sp/ALL #(m/match? [eid '_ '_] %)] sp/NONE store))
+(defn remove-triples [store clause]
+  (sp/setval [sp/ALL #(m/match? clause %)] sp/NONE store))
 
 (defn get-entity [store eid]
   (->> (d/q '[:find ?effect-data ?data :in $ ?eid
@@ -33,5 +33,7 @@
             store eid)
        (into {})))
 
-(defn q-one [query & inputs]
+(def query d/q)
+
+(defn query-one [query & inputs]
   (-> (apply d/q query inputs) first first))
