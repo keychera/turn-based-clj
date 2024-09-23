@@ -1,4 +1,4 @@
-(ns timeline-test
+(ns engine.timeline-test
   (:require [clojure.test :refer [deftest is]]
             [engine.timeline :refer [reduce-timeline]]
             [util.test-data :refer [build-history default-initial-state]]))

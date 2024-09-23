@@ -1,36 +1,6 @@
 (ns engine.timeline
-  (:require [engine.triplestore :refer [gen-dynamic-eid get-entity query
-                                        query-one remove-triples
+  (:require [engine.triplestore :refer [get-entity query remove-triples
                                         transform-entity]]))
-
-(def battle-data
-  #:battle-data
-   {:num-moment-per-turn 2
-    :actors [:actor/hilda :actor/aluxes]
-    :history-atom
-    (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (basic-attack :actor/aluxes))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}])})
-
-(def initial-state-triple
-  [[:info/state :state/turn 0]
-   [:info/state :state/desc "battle begins"]
-   [:info/state :state/actors [:actor/hilda :actor/aluxes]]
-   [:actor/hilda :attr/hp 560]
-   [:actor/hilda :attr/mp 200]
-   [:actor/aluxes :attr/hp 800]
-   [:actor/aluxes :attr/mp 10]])
 
 
 ;; Engine
@@ -63,40 +33,6 @@
   (require ns-symbol)
   (let [user-ns (create-ns ns-symbol)]
     (binding [*ns* user-ns] (clojure.core/eval form))))
-
-(defn basic-attack [actor target]
-  (fn [state]
-    (let [damage 50]
-      (-> state
-          (transform-entity target {:attr/hp #(- % damage)})
-          (transform-entity :info/state {:state/desc (str actor " attacks " target " for " damage " damage!")})))))
-
-(defn poison
-  ([actor target] (poison actor target #:effect-data{:duration 3}))
-  ([actor target {:effect-data/keys [duration]}]
-   (fn [state]
-     (let [manacost 30 debuff :debuff/poison
-           current-poison (query-one '[:find ?eid :in $ ?target ?name
-                                       :where [?target :attr/effect ?eid]
-                                       [?eid :effect-data/effect-name ?name]]
-                                     state target debuff)
-           poison-entity (or current-poison (gen-dynamic-eid state))]
-       (-> state
-           (transform-entity target {:attr/mp #(- % manacost)
-                                     :attr/effect poison-entity})
-           (transform-entity poison-entity #:effect-data{:effect-name debuff :source actor :duration duration})
-           (transform-entity :info/state {:state/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
-
-(defmethod unleash-effect :debuff/poison
-  [{:effect-data/keys [affected event state] :as effect-data}]
-  (when (= event :event/on-turn-begins)
-    (let [affected-entity (get-entity state affected)
-          affected-hp (:attr/hp affected-entity)
-          damage (Math/floor (/ affected-hp 10))]
-      (-> state
-          (reduce-effect-duration effect-data)
-          (transform-entity affected {:attr/hp #(- % damage)})
-          (transform-entity :info/state {:state/desc (str affected " is poisoned! receives " damage " damage!")})))))
 
 (defn reduce-timeline
   ([model initial-state battle-data]
@@ -132,10 +68,9 @@
            (recur updated-timeline (dec limit) remaining-turns)))))))
 
 (comment
+  (require '[model.hilda :refer [initial-state battle-data]])
   (add-tap #(def last-tap %))
   (add-tap #(println %))
   last-tap
 
-  basic-attack poison
-
-  (reduce-timeline 'engine.timeline initial-state-triple battle-data))
+  (reduce-timeline 'model.hilda initial-state battle-data 2))

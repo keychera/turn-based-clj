@@ -1,10 +1,13 @@
 (ns util.test-data)
 
 (def default-initial-state
-  #:state{:turn 0
-          :desc "battle begins"
-          :entities #:actor{:hilda #:attr{:hp 560 :mp 200}
-                            :aluxes #:attr{:hp 800 :mp 10}}})
+  [[:info/state :state/turn 0]
+   [:info/state :state/desc "battle begins"]
+   [:info/state :state/actors [:actor/hilda :actor/aluxes]]
+   [:actor/hilda :attr/hp 560]
+   [:actor/hilda :attr/mp 200]
+   [:actor/aluxes :attr/hp 800]
+   [:actor/aluxes :attr/mp 10]])
 
 (defn build-history [players history]
   #:battle-data

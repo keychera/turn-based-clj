@@ -8,7 +8,9 @@
   - [x] ~~vocab shift, turn -> moment, moment -> instant~~ reverted
 - [x] poison on own's turn
 - [x] test
-- [ ] diff visuals
+- [x] triplestore
+  - [ ] overhaul web
+  - [ ] diff visuals leveraging triplestores
 - [ ] events to latch on and richer effect trigger
 - [ ] let effect be potentially infinite
 - [ ] follow up
