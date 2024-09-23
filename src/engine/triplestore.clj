@@ -10,14 +10,26 @@
   (or (some->> (d/q '[:find ?entity :where [?entity _ _]] store)
                (map first) (filter int?) sort last inc) 0))
 
+
 (defn transform-entity [original-store eid transform-map]
   (->> transform-map
        (reduce (fn [store [attrkey transformation]]
-                 (let [prev-attr (sp/select-one [sp/ALL #(m/match? [eid attrkey '_] %)] store)]
-                   (if (nil? prev-attr)
+                 (let [prev-attr (sp/select-one [sp/ALL #(m/match? [eid attrkey '_] %)] store)
+                       add-duplicate-attr? (m/match? '[:add _] transformation)
+                       transformation (if add-duplicate-attr? (second transformation) transformation)]
+                   (cond
+                     (= prev-attr [eid attrkey transformation]) store
+
+                     add-duplicate-attr?
                      (do
-                       (when (fn? transformation) (throw (IllegalStateException. (str "cannot transform value from non-exisiting attribute (" attrkey ")"))))
+                       (when (fn? transformation) (throw (IllegalStateException. (str "cannot transform value when adding new attribute (" attrkey ")"))))
                        (conj store [eid attrkey transformation]))
+
+                     (nil? prev-attr)
+                     (do (when (fn? transformation) (throw (IllegalStateException. (str "cannot transform value from non-exisiting attribute (" attrkey ")"))))
+                         (conj store [eid attrkey transformation]))
+
+                     :else
                      (cond
                        (nil? transformation) (sp/setval [sp/ALL #(m/match? [eid attrkey '_] %)] sp/NONE store)
                        (fn? transformation) (sp/transform [sp/ALL #(m/match? [eid attrkey '_] %) sp/LAST] transformation store)
@@ -34,8 +46,15 @@
 
 (defn get-entity [store eid]
   (let [result (query '[:find ?attr ?attr-val :in $ ?eid
-                        :where [?eid ?attr ?attr-val]] store eid)]
-    (if (empty? result) nil (into {} result))))
+                        :where [?eid ?attr ?attr-val]] store eid)
+        resolved-duplicate-attrs
+        (->> result
+             (group-by first)
+             (map (fn [[attr values]]
+                    (if (= (count values) 1)
+                      [attr (->> values (map second) first)]
+                      [attr (->> values (map second))]))))]
+    (if (empty? result) nil (into {} resolved-duplicate-attrs))))
 
 (defn get-attr [store eid attr]
   (query-one '[:find ?attr-val :in $ ?eid ?attr

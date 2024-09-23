@@ -9,7 +9,8 @@
 - [x] poison on own's turn
 - [x] test
 - [x] triplestore
-  - [ ] overhaul web
+  - [x] overhaul web
+  - [x] multi effect
   - [ ] diff visuals leveraging triplestores
 - [ ] events to latch on and richer effect trigger
 - [ ] let effect be potentially infinite

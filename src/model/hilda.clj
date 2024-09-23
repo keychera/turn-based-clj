@@ -25,28 +25,32 @@
 (defn magic-up [actor]
   (fn magic-up [state]
     #_{:clj-kondo/ignore [:unused-binding]}
-    (let [manacost 40 buff :buff/magic-up duration -1]
+    (let [manacost 40 effect-name :buff/magic-up duration 4
+          current-effect (query-one '[:find ?eid :in $ ?target ?name
+                                      :where [?target :attr/effect ?eid]
+                                      [?eid :effect-data/effect-name ?name]]
+                                    state actor effect-name)
+          effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)})
-           ;; TODO multiple effect on an :actor
-          #_(transform [:state/entities actor :attr/effect]
-                       #(assoc % buff #:effect-data{:source actor :duration duration}))
+          (transform-entity actor {:attr/effect [:add effect-entity]})
+          (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration}) 
           (transform-entity :info/state {:state/desc (str actor " magic attack is buffed!")})))))
 
 (defn poison
   ([actor target] (poison actor target #:effect-data{:duration 3}))
   ([actor target {:effect-data/keys [duration]}]
    (fn poison [state]
-     (let [manacost 30 debuff :debuff/poison
-           current-poison (query-one '[:find ?eid :in $ ?target ?name
+     (let [manacost 30 effect-name :debuff/poison
+           current-effect (query-one '[:find ?eid :in $ ?target ?name
                                        :where [?target :attr/effect ?eid]
                                        [?eid :effect-data/effect-name ?name]]
-                                     state target debuff)
-           poison-entity (or current-poison (gen-dynamic-eid state))]
+                                     state target effect-name)
+           effect-entity (or current-effect (gen-dynamic-eid state))]
        (-> state
-           (transform-entity target {:attr/mp #(- % manacost)
-                                     :attr/effect poison-entity})
-           (transform-entity poison-entity #:effect-data{:effect-name debuff :source actor :duration duration})
+           (transform-entity actor {:attr/mp #(- % manacost)})
+           (transform-entity target {:attr/effect [:add effect-entity]})
+           (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
            (transform-entity :info/state {:state/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
 (defmethod unleash-effect :debuff/poison
@@ -62,13 +66,17 @@
 (defn charm [actor target]
   (fn charm [state]
     #_{:clj-kondo/ignore [:unused-binding]}
-    (let [manacost 80 debuff :debuff/charm duration 3]
-      (->> state
-           (transform-entity actor {:attr/mp #(- % manacost)})
-           ;; TODO multiple effect on an :actor
-           #_(transform [:state/entities target :attr/effect]
-                        #(assoc % debuff #:effect-data{:source actor :duration duration}))
-           (transform-entity :info/state {:state/desc (str actor " charms " target "! " target " is now charmed")})))))
+    (let [manacost 80 effect-name :debuff/charm duration 3
+          current-effect (query-one '[:find ?eid :in $ ?target ?name
+                                      :where [?target :attr/effect ?eid]
+                                      [?eid :effect-data/effect-name ?name]]
+                                    state target effect-name)
+          effect-entity (or current-effect (gen-dynamic-eid state))]
+      (-> state
+          (transform-entity actor {:attr/mp #(- % manacost)})
+          (transform-entity target {:attr/effect [:add effect-entity]})
+          (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
+          (transform-entity :info/state {:state/desc (str actor " charms " target "! " target " is now charmed")})))))
 
 
 (def initial-state
@@ -95,6 +103,11 @@
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
            #:moment{:whose  :actor/hilda
+                    :action '(-> :actor/hilda (charm :actor/aluxes))}
+           #:moment{:whose  :actor/aluxes
+                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+
+           #:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (magic-up))}
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
@@ -105,12 +118,7 @@
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
            #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (fireball :actor/aluxes))}
+                    :action '(-> :actor/hilda (magic-up))}
            #:moment{:whose  :actor/aluxes
                     :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
 
