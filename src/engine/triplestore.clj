@@ -1,8 +1,8 @@
 (ns engine.triplestore
   (:require [com.rpl.specter :as sp]
-            [matchete.core :as m]
-            [babashka.pods :as pods]))
+            [matchete.core :as m]))
 
+(require '[babashka.pods :as pods])
 (pods/load-pod 'huahaiy/datalevin "0.9.10")
 (require '[pod.huahaiy.datalevin :as d])
 
@@ -60,8 +60,3 @@
   (query-one '[:find ?attr-val :in $ ?eid ?attr
                :where [?eid ?attr ?attr-val]]
              store eid attr))
-
-(->> (query '[:find ?attr ?attr-val :in $ ?eid
-              :where [?eid ?attr ?attr-val]]
-            [[:actor/aluxes :hp 1]
-             [:actor/aluxes :p 1]] :actor/aluxes))

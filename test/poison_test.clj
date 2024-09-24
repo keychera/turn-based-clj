@@ -5,7 +5,7 @@
             [engine.triplestore :refer [query-one]]
             [util.test-data :refer [build-history default-initial-state]]))
 
-(def test-poison-data
+(def test-poison-poison
   (build-history
    [:actor/aluxes :actor/hilda]
    [#:moment{:whose  :actor/hilda
@@ -28,7 +28,7 @@
 
 (deftest test-poison
   (testing "Test poison interaction"
-    (let [actual-timeline (reduce-timeline 'model.hilda default-initial-state test-poison-data)]
+    (let [actual-timeline (reduce-timeline 'model.hilda default-initial-state test-poison-poison)]
       (is (= 8 (count actual-timeline)))
       (is (= 0 (query-info :state/turn (first actual-timeline))))
       (is (= 1 (query-info :state/turn (nth actual-timeline 1))))
@@ -42,4 +42,4 @@
       (is (= 3 (query-info :state/turn (nth actual-timeline 7)))))))
 
 (comment
-  (reduce-timeline 'model.hilda default-initial-state test-poison-data 2))
+  (reduce-timeline 'model.hilda default-initial-state test-poison-poison 2))
