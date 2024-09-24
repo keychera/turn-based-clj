@@ -15,6 +15,9 @@
 - [ ] events to latch on and richer effect trigger
 - [ ] let effect be potentially infinite
 - [ ] follow up
+- [ ] improvized moments
+  - [ ] saving moments in timeline
+  - [ ] categorizing/identifying moments
 - [ ] player stat and damage calculation
 - [ ] effect cauldron
 - [ ] player input
