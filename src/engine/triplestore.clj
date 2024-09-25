@@ -31,7 +31,7 @@
 
                      :else
                      (cond
-                       (nil? transformation) (sp/setval [sp/ALL #(m/match? [eid attrkey '_] %)] sp/NONE store)
+                       (nil? transformation) store
                        (fn? transformation) (sp/transform [sp/ALL #(m/match? [eid attrkey '_] %) sp/LAST] transformation store)
                        :else (sp/setval [sp/ALL #(m/match? [eid attrkey '_] %)  sp/LAST] transformation store)))))
                original-store)))
@@ -60,3 +60,6 @@
   (query-one '[:find ?attr-val :in $ ?eid ?attr
                :where [?eid ?attr ?attr-val]]
              store eid attr))
+
+(defn remove-attr [store eid attr]
+  (sp/setval [sp/ALL #(m/match? [eid attr '_] %)] sp/NONE store))
