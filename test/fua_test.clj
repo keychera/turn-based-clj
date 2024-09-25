@@ -3,18 +3,12 @@
             [engine.timeline :refer [reduce-timeline]]
             [util.test-data :refer [default-initial-state build-history]]))
 
-(def fua-default
-  (into default-initial-state
-        [[:actor/aluxes :attr/effect 0]
-         [0 :effect-data/effect-name :debuff/poison]
-         [0 :effect-data/duration 3]]))
-
 (def clara-talent
   [[:actor/aluxes :attr/effect 1]
    [1 :effect-data/effect-name :talent/clara]])
 
 (def clara-initial-state
-  (into fua-default clara-talent))
+  (into default-initial-state clara-talent))
 
 (def blade-talent
   [[:actor/aluxes :attr/effect 2]
@@ -23,10 +17,10 @@
    [2 :effect-data/charge 0]])
 
 (def blade-initial-state
-  (into fua-default blade-talent))
+  (into default-initial-state blade-talent))
 
 (def clara-blade-initial-state
-  (-> fua-default (into clara-talent) (into blade-talent)))
+  (-> default-initial-state (into clara-talent) (into blade-talent)))
 
 (def test-fua-history
   (build-history
@@ -46,15 +40,15 @@
 
 (deftest test-clara-talent
   (let [actual-timeline (reduce-timeline 'model.hilda clara-initial-state test-fua-history)]
-    (is (= 9 (count actual-timeline)))))
+    (is (= 10 (count actual-timeline)))))
 
 (deftest test-blade-talent
   (let [actual-timeline (reduce-timeline 'model.hilda blade-initial-state test-fua-history)]
-    (is (= 7 (count actual-timeline)))))
+    (is (= 8 (count actual-timeline)))))
 
 (deftest test-clara-blade-talent
   (let [actual-timeline (reduce-timeline 'model.hilda clara-blade-initial-state test-fua-history)]
-    (is (= 10 (count actual-timeline)))))
+    (is (= 11 (count actual-timeline)))))
 
 (comment
   (require '[babashka.pods :as pods])
