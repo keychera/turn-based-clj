@@ -1,8 +1,9 @@
 (ns engine.triplestore-test
   (:require [clojure.test :refer [deftest is]]
             [engine.triplestore :refer [gen-dynamic-eid get-attr get-entity
-                                        query-one remove-attr remove-triples
-                                        transform-entity]]))
+                                        remove-attr remove-triples
+                                        transform-entity]]
+            [pod.huahaiy.datalevin :as d]))
 
 (def store-with-no-dynamic-id
   [[:actor/hilda :attr/hp 410]
@@ -20,8 +21,8 @@
 
 
 (deftest test-query-one
-  (is (= nil (query-one '[:find ?effect-id :where [:actor/hilda :attr/effect ?effect-id]] store)))
-  (is (= 4 (query-one '[:find ?effect-id :where [:actor/aluxes :attr/effect ?effect-id]] store))))
+  (is (= nil (d/q '[:find ?effect-id . :where [:actor/hilda :attr/effect ?effect-id]] store)))
+  (is (= 4 (d/q '[:find ?effect-id . :where [:actor/aluxes :attr/effect ?effect-id]] store))))
 
 (deftest test-get-entity
   (is (= #:attr{:hp 750 :mp 10 :effect '(4 1)}
@@ -37,7 +38,7 @@
 
 (deftest test-remove-attr
   (is (= [[:actor/hilda :attr/hp 410]
-          [:actor/hilda :attr/mp 140] 
+          [:actor/hilda :attr/mp 140]
           [:actor/aluxes :attr/mp 10]]
          (remove-attr store-with-no-dynamic-id :actor/aluxes :attr/hp))))
 

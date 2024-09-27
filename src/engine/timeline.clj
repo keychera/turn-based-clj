@@ -1,6 +1,7 @@
 (ns engine.timeline
-  (:require [engine.triplestore :refer [get-entity query remove-triples
-                                        transform-entity]]))
+  (:require [engine.triplestore :refer [get-entity remove-triples
+                                        transform-entity]]
+            [pod.huahaiy.datalevin :as d]))
 
 
 ;; Engine
@@ -18,7 +19,7 @@
 
 (defn reduce-effects [original-timeline event]
   (let [state (peek original-timeline)
-        effects-id (query '[:find ?affected ?effect-id :where [?affected :attr/effect ?effect-id]] state)]
+        effects-id (d/q '[:find ?affected ?effect-id :where [?affected :attr/effect ?effect-id]] state)]
     (->> effects-id
          (map (fn [[affected effects-id]] [affected effects-id (get-entity state effects-id)]))
          (reduce (fn [timeline [affected effect-id effect-data]]

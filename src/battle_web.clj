@@ -3,9 +3,10 @@
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
             [engine.timeline :refer [reduce-timeline]]
-            [engine.triplestore :refer [get-attr get-entity query]]
+            [engine.triplestore :refer [get-attr get-entity]]
             [hiccup2.core :refer [html]]
             [model.hilda :refer [battle-data initial-state]]
+            [pod.huahaiy.datalevin :as d]
             [selmer.parser :refer [render-file]]))
 
 (defn timeline-html
@@ -34,7 +35,7 @@
                        last-moment (last viewed-moments)
                        entities (->> (get-attr last-moment :info/state :state/actors)
                                      (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                       effects (query '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
+                       effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
                    [:div
                     [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
@@ -46,7 +47,7 @@
                              (let [last-moment (last moments)
                                    entities (->> (get-attr last-moment :info/state :state/actors)
                                                  (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                                   effects (query '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
+                                   effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
                                [:div
                                 [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]

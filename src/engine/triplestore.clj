@@ -39,14 +39,9 @@
 (defn remove-triples [store clause]
   (sp/setval [sp/ALL #(m/match? clause %)] sp/NONE store))
 
-(def query d/q)
-
-(defn query-one [query & inputs]
-  (-> (apply d/q query inputs) first first))
-
 (defn get-entity [store eid]
-  (let [result (query '[:find ?attr ?attr-val :in $ ?eid
-                        :where [?eid ?attr ?attr-val]] store eid)
+  (let [result (d/q '[:find ?attr ?attr-val :in $ ?eid
+                      :where [?eid ?attr ?attr-val]] store eid)
         resolved-duplicate-attrs
         (->> result
              (group-by first)
@@ -57,9 +52,9 @@
     (if (empty? result) nil (into {} resolved-duplicate-attrs))))
 
 (defn get-attr [store eid attr]
-  (query-one '[:find ?attr-val :in $ ?eid ?attr
-               :where [?eid ?attr ?attr-val]]
-             store eid attr))
+  (d/q '[:find ?attr-val . :in $ ?eid ?attr
+         :where [?eid ?attr ?attr-val]]
+       store eid attr))
 
 (defn remove-attr [store eid attr]
   (sp/setval [sp/ALL #(m/match? [eid attr '_] %)] sp/NONE store))

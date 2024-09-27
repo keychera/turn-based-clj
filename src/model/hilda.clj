@@ -1,7 +1,8 @@
 (ns model.hilda
   (:require [engine.timeline :refer [reduce-effect-duration unleash-effect]]
-            [engine.triplestore :refer [gen-dynamic-eid get-attr query-one
-                                        transform-entity]]))
+            [engine.triplestore :refer [gen-dynamic-eid get-attr
+                                        transform-entity]]
+            [pod.huahaiy.datalevin :as d]))
 
 (defn nothing-happened [state]
   (-> state (transform-entity :info/state {:state/desc "nothing happened!"})))
@@ -24,17 +25,16 @@
 
 (defn magic-up [actor]
   (fn magic-up [state]
-    #_{:clj-kondo/ignore [:unused-binding]}
     (let [manacost 40 effect-name :buff/magic-up duration 4
-          current-effect (query-one '[:find ?eid :in $ ?target ?name
-                                      :where [?target :attr/effect ?eid]
-                                      [?eid :effect-data/effect-name ?name]]
-                                    state actor effect-name)
+          current-effect (d/q '[:find ?eid . :in $ ?target ?name
+                                :where [?target :attr/effect ?eid]
+                                [?eid :effect-data/effect-name ?name]]
+                              state actor effect-name)
           effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)
-                                   :attr/effect [:add effect-entity]}) 
-          (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration}) 
+                                   :attr/effect [:add effect-entity]})
+          (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration})
           (transform-entity :info/state {:state/desc (str actor " magic attack is buffed!")})))))
 
 (defn poison
@@ -42,10 +42,10 @@
   ([actor target {:effect-data/keys [duration]}]
    (fn poison [state]
      (let [manacost 30 effect-name :debuff/poison
-           current-effect (query-one '[:find ?eid :in $ ?target ?name
-                                       :where [?target :attr/effect ?eid]
-                                       [?eid :effect-data/effect-name ?name]]
-                                     state target effect-name)
+           current-effect (d/q '[:find ?eid . :in $ ?target ?name
+                                 :where [?target :attr/effect ?eid]
+                                 [?eid :effect-data/effect-name ?name]]
+                               state target effect-name)
            effect-entity (or current-effect (gen-dynamic-eid state))]
        (-> state
            (transform-entity actor {:attr/mp #(- % manacost)})
@@ -64,13 +64,12 @@
           (transform-entity :info/state {:state/desc (str affected " is poisoned! receives " damage " damage!")})))))
 
 (defn charm [actor target]
-  (fn charm [state]
-    #_{:clj-kondo/ignore [:unused-binding]}
+  (fn charm [state] 
     (let [manacost 80 effect-name :debuff/charm duration 3
-          current-effect (query-one '[:find ?eid :in $ ?target ?name
-                                      :where [?target :attr/effect ?eid]
-                                      [?eid :effect-data/effect-name ?name]]
-                                    state target effect-name)
+          current-effect (d/q '[:find ?eid . :in $ ?target ?name
+                                :where [?target :attr/effect ?eid]
+                                [?eid :effect-data/effect-name ?name]]
+                              state target effect-name)
           effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)})

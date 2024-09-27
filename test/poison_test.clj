@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [engine.timeline :refer [reduce-timeline]]
-            [engine.triplestore :refer [query-one]]
+            [pod.huahaiy.datalevin :as d]
             [util.test-data :refer [build-history default-initial-state]]))
 
 (def test-poison-poison
@@ -24,7 +24,7 @@
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
 (defn query-info [attr-key store]
-  (query-one '[:find ?turn :in $ ?attr-key :where [:info/state ?attr-key ?turn]] store attr-key))
+  (d/q '[:find ?turn . :in $ ?attr-key :where [:info/state ?attr-key ?turn]] store attr-key))
 
 (deftest test-poison
   (testing "Test poison interaction"
