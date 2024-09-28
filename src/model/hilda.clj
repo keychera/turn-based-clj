@@ -24,13 +24,13 @@
   (fn magic-up [state]
     (let [manacost 40 effect-name :buff/magic-up duration 4
           current-effect (d/q '[:find ?eid . :in $ ?target ?name
-                                :where [?target :attr/effect ?eid]
+                                :where [?target :attr/effects ?eid]
                                 [?eid :effect-data/effect-name ?name]]
                               state actor effect-name)
           effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)
-                                   :attr/effect [:add effect-entity]})
+                                   :attr/effects [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration})
           (transform-entity :info/moment {:moment/desc (str actor " magic attack is buffed!")})))))
 
@@ -40,13 +40,13 @@
    (fn poison [state]
      (let [manacost 30 effect-name :debuff/poison
            current-effect (d/q '[:find ?eid . :in $ ?target ?name
-                                 :where [?target :attr/effect ?eid]
+                                 :where [?target :attr/effects ?eid]
                                  [?eid :effect-data/effect-name ?name]]
                                state target effect-name)
            effect-entity (or current-effect (gen-dynamic-eid state))]
        (-> state
            (transform-entity actor {:attr/mp #(- % manacost)})
-           (transform-entity target {:attr/effect [:add effect-entity]})
+           (transform-entity target {:attr/effects [:add effect-entity]})
            (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
            (transform-entity :info/moment {:moment/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
@@ -64,20 +64,21 @@
   (fn charm [state]
     (let [manacost 80 effect-name :debuff/charm duration 3
           current-effect (d/q '[:find ?eid . :in $ ?target ?name
-                                :where [?target :attr/effect ?eid]
+                                :where [?target :attr/effects ?eid]
                                 [?eid :effect-data/effect-name ?name]]
                               state target effect-name)
           effect-entity (or current-effect (gen-dynamic-eid state))]
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)})
-          (transform-entity target {:attr/effect [:add effect-entity]})
+          (transform-entity target {:attr/effects [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
           (transform-entity :info/moment {:moment/desc (str actor " charms " target "! " target " is now charmed")})))))
 
 
 (def initial-state
   [[:info/state :state/turn 0]
-   [:info/state :state/actors [:actor/hilda :actor/aluxes]]
+   [:info/state :state/actors :actor/hilda]
+   [:info/state :state/actors :actor/aluxes]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
    [:actor/aluxes :attr/hp 800]

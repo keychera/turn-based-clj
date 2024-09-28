@@ -2,7 +2,8 @@
 
 (def default-initial-state
   [[:info/state :state/turn 0]
-   [:info/state :state/actors [:actor/hilda :actor/aluxes]]
+   [:info/state :state/actors :actor/hilda]
+   [:info/state :state/actors :actor/aluxes]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
    [:actor/aluxes :attr/hp 800]

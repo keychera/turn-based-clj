@@ -4,14 +4,14 @@
             [util.test-data :refer [default-initial-state build-history]]))
 
 (def clara-talent
-  [[:actor/aluxes :attr/effect 1]
+  [[:actor/aluxes :attr/effects 1]
    [1 :effect-data/effect-name :talent/clara]])
 
 (def clara-initial-state
   (into default-initial-state clara-talent))
 
 (def blade-talent
-  [[:actor/aluxes :attr/effect 2]
+  [[:actor/aluxes :attr/effects 2]
    [2 :effect-data/effect-name :talent/blade]
    [2 :effect-data/max-charge 2]
    [2 :effect-data/charge 0]])
@@ -57,6 +57,6 @@
 
   (->> (d/q '[:find ?talent-name
               :where
-              [:actor/aluxes :attr/effect ?eid]
+              [:actor/aluxes :attr/effects ?eid]
               [?eid :effect-data/talent-name ?talent-name]]
             clara-initial-state)))

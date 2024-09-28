@@ -9,7 +9,7 @@
   (let [new-duration (dec duration)]
     (cond (= duration -1) state
           (= new-duration 0) (-> state
-                                 (remove-triples [affected :attr/effect effect-id])
+                                 (remove-triples [affected :attr/effects effect-id])
                                  (remove-triples [effect-id '_ '_]))
           :else (transform-entity state effect-id {:effect-data/duration new-duration}))))
 
@@ -19,7 +19,7 @@
 
 (defn reduce-effects [original-timeline event]
   (let [state (peek original-timeline)
-        effects-id (d/q '[:find ?affected ?effect-id :where [?affected :attr/effect ?effect-id]] state)]
+        effects-id (d/q '[:find ?affected ?effect-id :where [?affected :attr/effects ?effect-id]] state)]
     (->> effects-id
          (map (fn [[affected effects-id]] [affected effects-id (get-entity state effects-id)]))
          (reduce (fn [timeline [affected effect-id effect-data]]

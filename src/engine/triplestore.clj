@@ -74,5 +74,10 @@
          :where [?eid ?attr ?attr-val]]
        store eid attr))
 
+(defn get-attr-multi [store eid attr]
+  (d/q '[:find [?attr-val ...] :in $ ?eid ?attr
+         :where [?eid ?attr ?attr-val]]
+       store eid attr))
+
 (defn remove-attr [store eid attr]
   (sp/setval [sp/ALL #(m/match? [eid attr '_] %)] sp/NONE store))

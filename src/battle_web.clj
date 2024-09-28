@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
             [engine.timeline :refer [reduce-timeline]]
-            [engine.triplestore :refer [get-attr get-entity]]
+            [engine.triplestore :refer [get-attr get-attr-multi get-entity]]
             [hiccup2.core :refer [html]]
             [model.hilda :refer [battle-data initial-state]]
             [pod.huahaiy.datalevin :as d]
@@ -33,9 +33,9 @@
                  [:p "Current turn " turn#]
                  (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
-                       entities (->> (get-attr last-moment :info/state :state/actors)
+                       entities (->> (get-attr-multi last-moment :info/state :state/actors)
                                      (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                       effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
+                       effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
                    [:div
                     [:p (str "Turn #" (or turn# 0))]
                     [:p (str entities)]
@@ -45,9 +45,9 @@
                  (->> prev-turns
                       (map (fn [[turn# moments]]
                              (let [last-moment (last moments)
-                                   entities (->> (get-attr last-moment :info/state :state/actors)
+                                   entities (->> (get-attr-multi last-moment :info/state :state/actors)
                                                  (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                                   effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effect ?eid] [?eid ?attr ?val]] last-moment)]
+                                   effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
                                [:div
                                 [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]
