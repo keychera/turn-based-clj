@@ -1,7 +1,8 @@
 (ns engine.triplestore-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [engine.triplestore :refer [gen-dynamic-eid get-attr get-entity
-                                        remove-attr remove-triples
+                                        overwrite-entity remove-attr
+                                        remove-entity remove-triples
                                         transform-entity]]
             [pod.huahaiy.datalevin :as d]))
 
@@ -19,17 +20,15 @@
          [1 :effect-data/source :actor/hilda]
          [1 :effect-data/duration 3]]))
 
-
+;; this was once our own function, but it turns out I don't have to make one
+;; but still leaving this as history
 (deftest test-query-one
   (is (= nil (d/q '[:find ?effect-id . :where [:actor/hilda :attr/effect ?effect-id]] store)))
   (is (= 4 (d/q '[:find ?effect-id . :where [:actor/aluxes :attr/effect ?effect-id]] store))))
 
-(deftest test-get-entity
-  (is (= #:attr{:hp 750 :mp 10 :effect '(4 1)}
-         (get-entity store :actor/aluxes)))
-  (is (= #:effect-data{:effect-name :debuff/poison :source :actor/hilda :duration 3}
-         (get-entity store 1)))
-  (is (= nil (get-entity store :actor/topaz))))
+(deftest test-gen-dynamic-eid
+  (is (= 2 (gen-dynamic-eid store)))
+  (is (= 0 (gen-dynamic-eid store-with-no-dynamic-id))))
 
 (deftest test-get-attr
   (is (= 750 (get-attr store :actor/aluxes :attr/hp)))
@@ -51,9 +50,41 @@
           [:actor/aluxes :attr/effect 4]]
          (remove-triples store '[1 _ _]))))
 
-(deftest test-gen-dynamic-eid
-  (is (= 2 (gen-dynamic-eid store)))
-  (is (= 0 (gen-dynamic-eid store-with-no-dynamic-id))))
+(deftest test-get-entity
+  (is (= #:attr{:hp 750 :mp 10 :effect '(4 1)}
+         (get-entity store :actor/aluxes)))
+  (is (= #:effect-data{:effect-name :debuff/poison :source :actor/hilda :duration 3}
+         (get-entity store 1)))
+  (is (= nil (get-entity store :actor/topaz))))
+
+(deftest test-remove-entity
+  (is (= [[:actor/hilda :attr/hp 410]
+          [:actor/hilda :attr/mp 140]
+          [1 :effect-data/effect-name :debuff/poison]
+          [1 :effect-data/source :actor/hilda]
+          [1 :effect-data/duration 3]]
+         (remove-entity store :actor/aluxes)))
+  (is (= [[:actor/aluxes :attr/hp 750]
+          [:actor/aluxes :attr/mp 10]]
+         (remove-entity store-with-no-dynamic-id :actor/hilda)))
+  (is (= [[:actor/hilda :attr/hp 410]
+          [:actor/hilda :attr/mp 140]
+          [:actor/aluxes :attr/hp 750]
+          [:actor/aluxes :attr/mp 10]
+          [:actor/aluxes :attr/effect 1]
+          [:actor/aluxes :attr/effect 4]]
+         (remove-entity store 1)))
+  ;; do we need transitive remove? let's just kiss for now
+  (is (= store-with-no-dynamic-id
+         (remove-entity store-with-no-dynamic-id :actor/topaz))))
+
+(deftest test-overwrite-entity
+  (is (= [[:actor/aluxes :attr/hp 750]
+          [:actor/aluxes :attr/mp 10]
+          [:actor/hilda :attr/hp -99]
+          [:actor/hilda :attr/effect 99]]
+         (overwrite-entity store-with-no-dynamic-id :actor/hilda
+                           {:attr/hp -99 :attr/effect 99}))))
 
 (def simple-store
   [[:actor/aluxes :attr/hp 1]])
@@ -73,8 +104,12 @@
          (transform-entity simple-store :actor/aluxes {:attr/hp [:add 99]})))
   (is (= [[:actor/aluxes :attr/hp 99]]
          (transform-entity [] :actor/aluxes {:attr/hp [:add 99]})))
+  
+  ;; "special handling here, as of now we can't have multiple attrbute with the same value"
+  ;; semantically it doesn't make sense (as of my current understanding)
   (is (= simple-store
          (transform-entity simple-store :actor/aluxes {:attr/hp [:add 1]})))
+  
   (is (thrown? IllegalStateException
                (transform-entity simple-store :actor/aluxes {:attr/effect [:add inc]})))
   (is (thrown? IllegalStateException
