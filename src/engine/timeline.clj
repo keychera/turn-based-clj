@@ -1,6 +1,6 @@
 (ns engine.timeline
-  (:require [engine.triplestore :refer [get-entity remove-triples
-                                        transform-entity]]
+  (:require [engine.triplestore :refer [get-entity overwrite-entity
+                                        remove-triples transform-entity]]
             [pod.huahaiy.datalevin :as d]))
 
 
@@ -27,7 +27,10 @@
                          extra-data #:effect-data{:affected affected :effect-id effect-id :event event :moment moment}
                          new-moment (unleash-effect (merge effect-data extra-data))]
                      (cond-> timeline
-                       (some? new-moment) (conj new-moment))))
+                       (some? new-moment)
+                       (conj (-> new-moment
+                                 (transform-entity :info/moment
+                                                   #:moment{:effect-name (:effect-data/effect-name effect-data)}))))))
                  original-timeline))))
 
 (defn do-eval [ns-symbol form]
@@ -52,11 +55,13 @@
                new-timeline (reduce-effects new-timeline :event/on-turn-begins)
                new-timeline (loop [moment-timeline new-timeline
                                    [moment & remaining-moments] moments-per-turn]
-                              (let [{:moment/keys [action]} moment
+                              (let [{:moment/keys [action] :as current-moment} moment
                                     moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
                                     alter (do-eval model action)
                                     moment (peek moment-timeline)
-                                    new-moment (alter moment)
+                                    new-moment (-> moment
+                                                   (overwrite-entity :info/moment current-moment)
+                                                   (alter))
                                     moment-timeline (conj moment-timeline new-moment)
                                     moment-timeline (reduce-effects moment-timeline :event/on-moment-ends)]
                                 (if (empty? remaining-moments)

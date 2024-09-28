@@ -39,7 +39,7 @@
       (is (= 1 (get-attr (nth actual-timeline 2) :info/timeline :timeline/turn)))
       (let [poison-moment (nth actual-timeline 3)]
         (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
-        (is (= (get-attr poison-moment :info/moment :effect-data/effect-name) :debuff/poison)))
+        (is (= (get-attr poison-moment :info/moment :moment/effect-name) :debuff/poison)))
       (is (= 2 (get-attr (nth actual-timeline 4) :info/timeline :timeline/turn)))
       (is (= 2 (get-attr (nth actual-timeline 5) :info/timeline :timeline/turn)))
       (is (= 3 (get-attr (nth actual-timeline 6) :info/timeline :timeline/turn)))
