@@ -4,15 +4,12 @@
                                         transform-entity]]
             [pod.huahaiy.datalevin :as d]))
 
-(defn nothing-happened [state]
-  (-> state (transform-entity :info/state {:state/desc "nothing happened!"})))
-
 (defn basic-attack [actor target]
   (fn basic-attack [state]
     (let [damage 50]
       (-> state
           (transform-entity target {:attr/hp #(- % damage)})
-          (transform-entity :info/state {:state/desc (str actor " attacks " target " for " damage " damage!")})))))
+          (transform-entity :info/moment {:moment/desc (str actor " attacks " target " for " damage " damage!")})))))
 
 
 (defn fireball [actor target]
@@ -21,7 +18,7 @@
       (-> state
           (transform-entity actor {:attr/mp #(- % manacost)})
           (transform-entity target {:attr/hp #(- % damage)})
-          (transform-entity :info/state {:state/desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
+          (transform-entity :info/moment {:moment/desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
 
 (defn magic-up [actor]
   (fn magic-up [state]
@@ -35,7 +32,7 @@
           (transform-entity actor {:attr/mp #(- % manacost)
                                    :attr/effect [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration})
-          (transform-entity :info/state {:state/desc (str actor " magic attack is buffed!")})))))
+          (transform-entity :info/moment {:moment/desc (str actor " magic attack is buffed!")})))))
 
 (defn poison
   ([actor target] (poison actor target #:effect-data{:duration 3}))
@@ -51,7 +48,7 @@
            (transform-entity actor {:attr/mp #(- % manacost)})
            (transform-entity target {:attr/effect [:add effect-entity]})
            (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
-           (transform-entity :info/state {:state/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
+           (transform-entity :info/moment {:moment/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
 (defmethod unleash-effect :debuff/poison
   [{:effect-data/keys [affected event state] :as effect-data}]
@@ -61,10 +58,10 @@
       (-> state
           (reduce-effect-duration effect-data)
           (transform-entity affected {:attr/hp #(- % damage)})
-          (transform-entity :info/state {:state/desc (str affected " is poisoned! receives " damage " damage!")})))))
+          (transform-entity :info/moment {:moment/desc (str affected " is poisoned! receives " damage " damage!")})))))
 
 (defn charm [actor target]
-  (fn charm [state] 
+  (fn charm [state]
     (let [manacost 80 effect-name :debuff/charm duration 3
           current-effect (d/q '[:find ?eid . :in $ ?target ?name
                                 :where [?target :attr/effect ?eid]
@@ -75,12 +72,11 @@
           (transform-entity actor {:attr/mp #(- % manacost)})
           (transform-entity target {:attr/effect [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
-          (transform-entity :info/state {:state/desc (str actor " charms " target "! " target " is now charmed")})))))
+          (transform-entity :info/moment {:moment/desc (str actor " charms " target "! " target " is now charmed")})))))
 
 
 (def initial-state
   [[:info/state :state/turn 0]
-   [:info/state :state/desc "battle begins"]
    [:info/state :state/actors [:actor/hilda :actor/aluxes]]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
@@ -137,8 +133,8 @@
   (add-tap #(def last-tap %))
   (add-tap #(println %))
 
-  ;; just for removing warning
-  nothing-happened basic-attack fireball magic-up poison charm
+  ;; just for removing warning 
+  basic-attack fireball magic-up poison charm
   turn-model
 
   (reduce-timeline 'model.hilda initial-state battle-data 1))

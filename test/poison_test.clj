@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [engine.timeline :refer [reduce-timeline]]
-            [pod.huahaiy.datalevin :as d]
+            [engine.triplestore :refer [get-attr]]
             [util.test-data :refer [build-history default-initial-state]]))
 
 (def test-poison-poison
@@ -23,23 +23,20 @@
     #:moment{:whose  :actor/aluxes
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
-(defn query-info [attr-key store]
-  (d/q '[:find ?turn . :in $ ?attr-key :where [:info/state ?attr-key ?turn]] store attr-key))
-
 (deftest test-poison
   (testing "Test poison interaction"
     (let [actual-timeline (reduce-timeline 'model.hilda default-initial-state test-poison-poison)]
       (is (= 8 (count actual-timeline)))
-      (is (= 0 (query-info :state/turn (first actual-timeline))))
-      (is (= 1 (query-info :state/turn (nth actual-timeline 1))))
-      (is (= 1 (query-info :state/turn (nth actual-timeline 2))))
+      (is (= 0 (get-attr (first actual-timeline) :info/state :state/turn)))
+      (is (= 1 (get-attr (nth actual-timeline 1) :info/state :state/turn)))
+      (is (= 1 (get-attr (nth actual-timeline 2) :info/state :state/turn)))
       (let [poison-moment (nth actual-timeline 3)]
-        (is (str/includes? (query-info :state/desc poison-moment) "poison"))
-        (is (= 2 (query-info :state/turn poison-moment))))
-      (is (= 2 (query-info :state/turn (nth actual-timeline 4))))
-      (is (= 2 (query-info :state/turn (nth actual-timeline 5))))
-      (is (= 3 (query-info :state/turn (nth actual-timeline 6))))
-      (is (= 3 (query-info :state/turn (nth actual-timeline 7)))))))
+        (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
+        (is (= (get-attr poison-moment :info/moment :effect-data/effect-name) :debuff/poison)))
+      (is (= 2 (get-attr (nth actual-timeline 4) :info/state :state/turn)))
+      (is (= 2 (get-attr (nth actual-timeline 5) :info/state :state/turn)))
+      (is (= 3 (get-attr (nth actual-timeline 6) :info/state :state/turn)))
+      (is (= 3 (get-attr (nth actual-timeline 7) :info/state :state/turn))))))
 
 (comment
   (reduce-timeline 'model.hilda default-initial-state test-poison-poison 2))

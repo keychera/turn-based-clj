@@ -41,7 +41,7 @@
                     [:p (str entities)]
                     [:p (str effects)]
                     [:ol (->> viewed-moments
-                              (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]])
+                              (map (fn [moment] [:li  [:p [:b (str (get-entity moment :info/moment))]]])))]])
                  (->> prev-turns
                       (map (fn [[turn# moments]]
                              (let [last-moment (last moments)
@@ -52,7 +52,7 @@
                                 [:p (str "Turn #" (or turn# 0))]
                                 [:p (str entities)]
                                 [:p (str effects)]
-                                [:ol (->> moments (map (fn [moment] [:li  [:p [:b (get-attr moment :info/state :state/desc)]]])))]]))))])))))
+                                [:ol (->> moments (map (fn [moment] [:li  [:p [:b (str (get-entity moment :info/moment))]]])))]]))))])))))
 
 (defn battle-html [moment#]
   (render-file "battle.html" {:timeline-html (timeline-html moment#)}))

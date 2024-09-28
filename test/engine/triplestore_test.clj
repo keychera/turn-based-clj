@@ -118,6 +118,6 @@
   (is (thrown? IllegalStateException
                (transform-entity simple-store :actor/aluxes {:attr/effect [:add inc]})))
   (is (thrown? IllegalStateException
-               (transform-entity simple-store :actor/aluxes {:attr/effect [:add 2 3]})))
+               (transform-entity simple-store :actor/aluxes {:attr/effect [:add 2 3 inc 4]})))
   (is (thrown? IllegalStateException
                (transform-entity simple-store :actor/aluxes {:attr/effect inc}))))
