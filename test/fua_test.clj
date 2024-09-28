@@ -1,14 +1,14 @@
 (ns fua-test
   (:require [clojure.test :refer [deftest is]]
             [engine.timeline :refer [reduce-timeline]]
-            [util.test-data :refer [default-initial-state build-history]]))
+            [util.test-data :refer [default-initial-moment build-history]]))
 
 (def clara-talent
   [[:actor/aluxes :attr/effects 1]
    [1 :effect-data/effect-name :talent/clara]])
 
-(def clara-initial-state
-  (into default-initial-state clara-talent))
+(def clara-initial-moment
+  (into default-initial-moment clara-talent))
 
 (def blade-talent
   [[:actor/aluxes :attr/effects 2]
@@ -16,11 +16,11 @@
    [2 :effect-data/max-charge 2]
    [2 :effect-data/charge 0]])
 
-(def blade-initial-state
-  (into default-initial-state blade-talent))
+(def blade-initial-moment
+  (into default-initial-moment blade-talent))
 
-(def clara-blade-initial-state
-  (-> default-initial-state (into clara-talent) (into blade-talent)))
+(def clara-blade-initial-moment
+  (-> default-initial-moment (into clara-talent) (into blade-talent)))
 
 (def test-fua-history
   (build-history
@@ -39,15 +39,15 @@
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
 (deftest test-clara-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda clara-initial-state test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda clara-initial-moment test-fua-history)]
     (is (= 10 (count actual-timeline)))))
 
 (deftest test-blade-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda blade-initial-state test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda blade-initial-moment test-fua-history)]
     (is (= 8 (count actual-timeline)))))
 
 (deftest test-clara-blade-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda clara-blade-initial-state test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda clara-blade-initial-moment test-fua-history)]
     (is (= 11 (count actual-timeline)))))
 
 (comment
@@ -59,4 +59,4 @@
               :where
               [:actor/aluxes :attr/effects ?eid]
               [?eid :effect-data/talent-name ?talent-name]]
-            clara-initial-state)))
+            clara-initial-moment)))

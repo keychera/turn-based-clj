@@ -1,9 +1,9 @@
 (ns util.test-data)
 
-(def default-initial-state
-  [[:info/state :state/turn 0]
-   [:info/state :state/actors :actor/hilda]
-   [:info/state :state/actors :actor/aluxes]
+(def default-initial-moment
+  [[:info/moment :moment/turn 0]
+   [:info/moment :moment/actors :actor/hilda]
+   [:info/moment :moment/actors :actor/aluxes]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
    [:actor/aluxes :attr/hp 800]

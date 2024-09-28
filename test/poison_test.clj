@@ -3,7 +3,7 @@
             [clojure.test :refer [deftest is testing]]
             [engine.timeline :refer [reduce-timeline]]
             [engine.triplestore :refer [get-attr]]
-            [util.test-data :refer [build-history default-initial-state]]))
+            [util.test-data :refer [build-history default-initial-moment]]))
 
 (def test-poison-poison
   (build-history
@@ -25,18 +25,18 @@
 
 (deftest test-poison
   (testing "Test poison interaction"
-    (let [actual-timeline (reduce-timeline 'model.hilda default-initial-state test-poison-poison)]
+    (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-poison-poison)]
       (is (= 8 (count actual-timeline)))
-      (is (= 0 (get-attr (first actual-timeline) :info/state :state/turn)))
-      (is (= 1 (get-attr (nth actual-timeline 1) :info/state :state/turn)))
-      (is (= 1 (get-attr (nth actual-timeline 2) :info/state :state/turn)))
+      (is (= 0 (get-attr (first actual-timeline) :info/moment :moment/turn)))
+      (is (= 1 (get-attr (nth actual-timeline 1) :info/moment :moment/turn)))
+      (is (= 1 (get-attr (nth actual-timeline 2) :info/moment :moment/turn)))
       (let [poison-moment (nth actual-timeline 3)]
         (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
         (is (= (get-attr poison-moment :info/moment :effect-data/effect-name) :debuff/poison)))
-      (is (= 2 (get-attr (nth actual-timeline 4) :info/state :state/turn)))
-      (is (= 2 (get-attr (nth actual-timeline 5) :info/state :state/turn)))
-      (is (= 3 (get-attr (nth actual-timeline 6) :info/state :state/turn)))
-      (is (= 3 (get-attr (nth actual-timeline 7) :info/state :state/turn))))))
+      (is (= 2 (get-attr (nth actual-timeline 4) :info/moment :moment/turn)))
+      (is (= 2 (get-attr (nth actual-timeline 5) :info/moment :moment/turn)))
+      (is (= 3 (get-attr (nth actual-timeline 6) :info/moment :moment/turn)))
+      (is (= 3 (get-attr (nth actual-timeline 7) :info/moment :moment/turn))))))
 
 (comment
-  (reduce-timeline 'model.hilda default-initial-state test-poison-poison 2))
+  (reduce-timeline 'model.hilda default-initial-moment test-poison-poison 2))

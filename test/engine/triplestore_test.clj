@@ -6,7 +6,7 @@
                                         remove-entity remove-triples
                                         transform-entity]]
             [pod.huahaiy.datalevin :as d]
-            [util.test-data :refer [default-initial-state]]))
+            [util.test-data :refer [default-initial-moment]]))
 
 (def store-with-no-dynamic-id
   [[:actor/hilda :attr/hp 410]
@@ -39,7 +39,7 @@
 
 (deftest test-get-attr-multi
   (is (= [:actor/hilda :actor/aluxes]
-         (get-attr-multi default-initial-state :info/state :state/actors))))
+         (get-attr-multi default-initial-moment :info/moment :moment/actors))))
 
 (deftest test-remove-attr
   (is (= [[:actor/hilda :attr/hp 410]

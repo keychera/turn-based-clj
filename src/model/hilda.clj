@@ -5,30 +5,30 @@
             [pod.huahaiy.datalevin :as d]))
 
 (defn basic-attack [actor target]
-  (fn basic-attack [state]
+  (fn basic-attack [moment]
     (let [damage 50]
-      (-> state
+      (-> moment
           (transform-entity target {:attr/hp #(- % damage)})
           (transform-entity :info/moment {:moment/desc (str actor " attacks " target " for " damage " damage!")})))))
 
 
 (defn fireball [actor target]
-  (fn fireball [state]
+  (fn fireball [moment]
     (let [manacost 15 damage 50]
-      (-> state
+      (-> moment
           (transform-entity actor {:attr/mp #(- % manacost)})
           (transform-entity target {:attr/hp #(- % damage)})
           (transform-entity :info/moment {:moment/desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
 
 (defn magic-up [actor]
-  (fn magic-up [state]
+  (fn magic-up [moment]
     (let [manacost 40 effect-name :buff/magic-up duration 4
           current-effect (d/q '[:find ?eid . :in $ ?target ?name
                                 :where [?target :attr/effects ?eid]
                                 [?eid :effect-data/effect-name ?name]]
-                              state actor effect-name)
-          effect-entity (or current-effect (gen-dynamic-eid state))]
-      (-> state
+                              moment actor effect-name)
+          effect-entity (or current-effect (gen-dynamic-eid moment))]
+      (-> moment
           (transform-entity actor {:attr/mp #(- % manacost)
                                    :attr/effects [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :duration duration})
@@ -37,48 +37,48 @@
 (defn poison
   ([actor target] (poison actor target #:effect-data{:duration 3}))
   ([actor target {:effect-data/keys [duration]}]
-   (fn poison [state]
+   (fn poison [moment]
      (let [manacost 30 effect-name :debuff/poison
            current-effect (d/q '[:find ?eid . :in $ ?target ?name
                                  :where [?target :attr/effects ?eid]
                                  [?eid :effect-data/effect-name ?name]]
-                               state target effect-name)
-           effect-entity (or current-effect (gen-dynamic-eid state))]
-       (-> state
+                               moment target effect-name)
+           effect-entity (or current-effect (gen-dynamic-eid moment))]
+       (-> moment
            (transform-entity actor {:attr/mp #(- % manacost)})
            (transform-entity target {:attr/effects [:add effect-entity]})
            (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
            (transform-entity :info/moment {:moment/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
 (defmethod unleash-effect :debuff/poison
-  [{:effect-data/keys [affected event state] :as effect-data}]
+  [{:effect-data/keys [affected event moment] :as effect-data}]
   (when (= event :event/on-turn-begins)
-    (let [affected-hp (get-attr state affected :attr/hp)
+    (let [affected-hp (get-attr moment affected :attr/hp)
           damage (Math/floor (/ affected-hp 10))]
-      (-> state
+      (-> moment
           (reduce-effect-duration effect-data)
           (transform-entity affected {:attr/hp #(- % damage)})
           (transform-entity :info/moment {:moment/desc (str affected " is poisoned! receives " damage " damage!")})))))
 
 (defn charm [actor target]
-  (fn charm [state]
+  (fn charm [moment]
     (let [manacost 80 effect-name :debuff/charm duration 3
           current-effect (d/q '[:find ?eid . :in $ ?target ?name
                                 :where [?target :attr/effects ?eid]
                                 [?eid :effect-data/effect-name ?name]]
-                              state target effect-name)
-          effect-entity (or current-effect (gen-dynamic-eid state))]
-      (-> state
+                              moment target effect-name)
+          effect-entity (or current-effect (gen-dynamic-eid moment))]
+      (-> moment
           (transform-entity actor {:attr/mp #(- % manacost)})
           (transform-entity target {:attr/effects [:add effect-entity]})
           (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
           (transform-entity :info/moment {:moment/desc (str actor " charms " target "! " target " is now charmed")})))))
 
 
-(def initial-state
-  [[:info/state :state/turn 0]
-   [:info/state :state/actors :actor/hilda]
-   [:info/state :state/actors :actor/aluxes]
+(def initial-moment
+  [[:info/moment :moment/turn 0]
+   [:info/moment :moment/actors :actor/hilda]
+   [:info/moment :moment/actors :actor/aluxes]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
    [:actor/aluxes :attr/hp 800]
@@ -138,4 +138,4 @@
   basic-attack fireball magic-up poison charm
   turn-model
 
-  (reduce-timeline 'model.hilda initial-state battle-data 1))
+  (reduce-timeline 'model.hilda initial-moment battle-data 1))
