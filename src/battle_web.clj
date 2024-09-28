@@ -13,11 +13,11 @@
   ([turn#] (timeline-html turn# 0))
   ([turn# moment#]
    (let [timeline (reduce-timeline 'model.hilda initial-moment battle-data turn#)
-         timeline-per-turn (->> timeline (group-by #(get-attr % :info/moment :moment/turn)))
+         timeline-per-turn (->> timeline (group-by #(get-attr % :info/timeline :timeline/turn)))
          curr-moments (get timeline-per-turn turn#)
          prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc moment#) (count curr-moments))
-         last-turn? (get-attr (first curr-moments) :info/moment :moment/last-turn?)
+         last-turn? (get-attr (first curr-moments) :info/timeline :timeline/last-turn?)
          [_ prev-moments] (last prev-turns)]
      (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline" :hx-swap "outerHTML"}
                  (when-not (and last-turn? last-moment?)
@@ -33,7 +33,7 @@
                  [:p "Current turn " turn#]
                  (let [viewed-moments (take (inc moment#) curr-moments)
                        last-moment (last viewed-moments)
-                       entities (->> (get-attr-multi last-moment :info/moment :moment/actors)
+                       entities (->> (get-attr-multi last-moment :info/timeline :timeline/actors)
                                      (mapv (fn [actor] [actor (get-entity last-moment actor)])))
                        effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
                    [:div
@@ -45,7 +45,7 @@
                  (->> prev-turns
                       (map (fn [[turn# moments]]
                              (let [last-moment (last moments)
-                                   entities (->> (get-attr-multi last-moment :info/moment :moment/actors)
+                                   entities (->> (get-attr-multi last-moment :info/timeline :timeline/actors)
                                                  (mapv (fn [actor] [actor (get-entity last-moment actor)])))
                                    effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
                                [:div

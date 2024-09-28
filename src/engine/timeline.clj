@@ -47,10 +47,9 @@
          (let [moments-per-turn (take num-moment-per-turn remaining-turns)
                remaining-turns (drop num-moment-per-turn remaining-turns)
                moment (peek timeline)
-               new-timeline (conj [] (cond-> (transform-entity moment :info/moment {:moment/turn inc})
-                                       (empty? remaining-turns) (conj [:info/moment :moment/last-turn? true])))
+               new-timeline (conj [] (cond-> (transform-entity moment :info/timeline {:timeline/turn inc})
+                                       (empty? remaining-turns) (conj [:info/timeline :timeline/last-turn? true])))
                new-timeline (reduce-effects new-timeline :event/on-turn-begins)
-
                new-timeline (loop [moment-timeline new-timeline
                                    [moment & remaining-moments] moments-per-turn]
                               (let [{:moment/keys [action]} moment

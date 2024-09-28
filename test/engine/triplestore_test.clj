@@ -39,7 +39,7 @@
 
 (deftest test-get-attr-multi
   (is (= [:actor/hilda :actor/aluxes]
-         (get-attr-multi default-initial-moment :info/moment :moment/actors))))
+         (get-attr-multi default-initial-moment :info/timeline :timeline/actors))))
 
 (deftest test-remove-attr
   (is (= [[:actor/hilda :attr/hp 410]

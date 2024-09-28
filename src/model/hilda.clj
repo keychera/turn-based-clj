@@ -76,9 +76,9 @@
 
 
 (def initial-moment
-  [[:info/moment :moment/turn 0]
-   [:info/moment :moment/actors :actor/hilda]
-   [:info/moment :moment/actors :actor/aluxes]
+  [[:info/timeline :timeline/turn 0]
+   [:info/timeline :timeline/actors :actor/hilda]
+   [:info/timeline :timeline/actors :actor/aluxes]
    [:actor/hilda :attr/hp 560]
    [:actor/hilda :attr/mp 200]
    [:actor/aluxes :attr/hp 800]
