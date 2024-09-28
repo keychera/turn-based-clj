@@ -1,5 +1,5 @@
 (ns engine.triplestore-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is]]
             [engine.triplestore :refer [gen-dynamic-eid get-attr get-entity
                                         overwrite-entity remove-attr
                                         remove-entity remove-triples
@@ -104,13 +104,20 @@
          (transform-entity simple-store :actor/aluxes {:attr/hp [:add 99]})))
   (is (= [[:actor/aluxes :attr/hp 99]]
          (transform-entity [] :actor/aluxes {:attr/hp [:add 99]})))
-  
-  ;; "special handling here, as of now we can't have multiple attrbute with the same value"
-  ;; semantically it doesn't make sense (as of my current understanding)
+
+  ;; current behaviour is that multiple attributes can't have the same value
+  ;; all facts in the store are distinct
   (is (= simple-store
          (transform-entity simple-store :actor/aluxes {:attr/hp [:add 1]})))
-  
+  (is (= (into simple-store
+               [[:actor/aluxes :attr/hp 99]
+                [:actor/aluxes :attr/hp :debuff/poison]
+                [:actor/aluxes :attr/hp "topaz"]])
+         (transform-entity simple-store :actor/aluxes {:attr/hp [:add 1 99 :debuff/poison "topaz"]})))
+
   (is (thrown? IllegalStateException
                (transform-entity simple-store :actor/aluxes {:attr/effect [:add inc]})))
+  (is (thrown? IllegalStateException
+               (transform-entity simple-store :actor/aluxes {:attr/effect [:add 2 3]})))
   (is (thrown? IllegalStateException
                (transform-entity simple-store :actor/aluxes {:attr/effect inc}))))
