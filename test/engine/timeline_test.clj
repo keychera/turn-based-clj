@@ -1,6 +1,6 @@
 (ns engine.timeline-test
   (:require [clojure.test :refer [deftest is]]
-            [engine.timeline :refer [reduce-timeline]]
+            [engine.timeline :refer [get-active-effects reduce-timeline]]
             [util.test-data :refer [build-history default-initial-moment]]))
 
 (def timeline-test-data
@@ -31,4 +31,12 @@
 
 (deftest timeline-no-limit-test
   (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment timeline-test-data)]
-    (is (= 8 (count actual-timeline))))) 
+    (is (= 8 (count actual-timeline)))))
+
+(deftest test-get-active-effects
+  (let [poisoned-moment (peek (reduce-timeline 'model.hilda default-initial-moment timeline-test-data 1))]
+    (is (= '([:actor/aluxes 0 :debuff/poison])
+           (get-active-effects poisoned-moment :event/on-turn-begins))))
+  (let [poisoned-moment (peek (reduce-timeline 'model.hilda default-initial-moment timeline-test-data 2))]
+    (is (= '()
+           (get-active-effects poisoned-moment :event/on-turn-begins)))))

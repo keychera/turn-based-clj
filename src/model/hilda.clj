@@ -50,15 +50,14 @@
            (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
            (transform-entity :info/moment {:moment/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
-(defmethod unleash-effect :debuff/poison
-  [{:effect-data/keys [affected event moment] :as effect-data}]
-  (when (= event :event/on-turn-begins)
-    (let [affected-hp (get-attr moment affected :attr/hp)
-          damage (Math/floor (/ affected-hp 10))]
-      (-> moment
-          (reduce-effect-duration effect-data)
-          (transform-entity affected {:attr/hp #(- % damage)})
-          (transform-entity :info/moment {:moment/desc (str affected " is poisoned! receives " damage " damage!")})))))
+(defmethod unleash-effect [:debuff/poison :event/on-turn-begins]
+  [{:effect-data/keys [affected moment] :as effect-data}]
+  (let [affected-hp (get-attr moment affected :attr/hp)
+        damage      (Math/floor (/ affected-hp 10))]
+    (-> moment
+        (reduce-effect-duration effect-data)
+        (transform-entity affected {:attr/hp #(- % damage)})
+        (transform-entity :info/moment {:moment/desc (str affected " is poisoned! receives " damage " damage!")}))))
 
 (defn charm [actor target]
   (fn charm [moment]

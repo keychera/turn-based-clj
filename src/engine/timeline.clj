@@ -13,25 +13,39 @@
                                  (remove-triples [effect-id '_ '_]))
           :else (transform-entity moment effect-id {:effect-data/duration new-duration}))))
 
-(defmulti unleash-effect :effect-data/effect-name)
+;; this multimethod has no :default on purpose
+;; because checking is done with get-method 
+;; to avoid unnecessary queries when passing complete effect-data
+(defmulti unleash-effect (juxt :effect-data/effect-name :effect-data/event))
 
-(defmethod unleash-effect :default [_] nil)
+(defn get-active-effects [moment event]
+  (->> moment
+       (d/q '[:find ?affected ?effect-id ?effect-name
+              :where [?affected :attr/effects ?effect-id]
+              [?effect-id :effect-data/effect-name ?effect-name]])
+       (filter (fn [[_ _ effect-name]]
+                 (get-method unleash-effect [effect-name event])))))
 
 (defn reduce-effects [original-timeline event]
-  (let [moment (peek original-timeline)
-        effects-id (d/q '[:find ?affected ?effect-id :where [?affected :attr/effects ?effect-id]] moment)]
-    (->> effects-id
-         (map (fn [[affected effects-id]] [affected effects-id (get-entity moment effects-id)]))
-         (reduce (fn [timeline [affected effect-id effect-data]]
-                   (let [moment (peek timeline)
-                         extra-data #:effect-data{:affected affected :effect-id effect-id :event event :moment moment}
-                         new-moment (unleash-effect (merge effect-data extra-data))]
-                     (cond-> timeline
-                       (some? new-moment)
-                       (conj (-> new-moment
-                                 (transform-entity :info/moment
-                                                   #:moment{:effect-name (:effect-data/effect-name effect-data)}))))))
-                 original-timeline))))
+  (let [current-moment (peek original-timeline)
+        active-effects (get-active-effects current-moment event)
+        effect-timeline
+        (loop [current-timeline []
+               remaining-effects active-effects]
+          (if (empty? remaining-effects)
+            current-timeline
+            (let [prev-moment (or (peek current-timeline) current-moment)
+                  [effect-to-unleash & remaining-effects] remaining-effects
+                  [affected effect-id effect-name] effect-to-unleash
+                  new-moment (some-> (unleash-effect (merge #:effect-data{:effect-id effect-id :event event
+                                                                          :affected affected :moment prev-moment}
+                                                            (get-entity current-moment effect-id)))
+                                     (transform-entity :info/moment #:moment{:effect-name effect-name
+                                                                             :event event}))]
+              (recur (cond-> current-timeline
+                       (some? new-moment) (conj new-moment))
+                     remaining-effects))))]
+    (into original-timeline effect-timeline)))
 
 (defn do-eval [ns-symbol form]
   (require ns-symbol)

@@ -3,8 +3,8 @@
         com.rpl/specter {:mvn/version "1.1.4"}
         io.xapix/matchete {:mvn/version "1.1.0"}}
  :tasks
- {test-all {:extra-paths ["test"]
-            :extra-deps {io.github.cognitect-labs/test-runner {:git/sha "9d36f36ff541dac680a05010e4348c744333f191"}}
-            :task (exec 'util.runner/run-tests)
-            :exec-args {:dirs ["test"]}
-            :org.babashka/cli {:coerce {:nses [:symbol] :vars [:symbol]}}}}}
+ {test {:extra-paths ["test"]
+        :extra-deps {io.github.cognitect-labs/test-runner {:git/sha "9d36f36ff541dac680a05010e4348c744333f191"}}
+        :task (exec 'util.runner/run-tests)
+        :exec-args {:dirs ["test"]}
+        :org.babashka/cli {:coerce {:nses [:symbol] :vars [:symbol]}}}}}
