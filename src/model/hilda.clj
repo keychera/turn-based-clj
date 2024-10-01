@@ -57,7 +57,8 @@
     (-> moment
         (reduce-effect-duration effect-data)
         (transform-entity affected {:attr/hp #(- % damage)})
-        (transform-entity :info/moment {:moment/desc (str affected " is poisoned! receives " damage " damage!")}))))
+        (transform-entity :info/moment {:moment/affected affected :moment/damage damage
+                                        :moment/desc (str affected " is poisoned! receives " damage " damage!")}))))
 
 (defn charm [actor target]
   (fn charm [moment]
