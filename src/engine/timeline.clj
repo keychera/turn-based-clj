@@ -42,8 +42,7 @@
                 current-timeline (cond-> current-timeline
                                    (some? new-moment) (conj new-moment))]
             (if (empty? remaining-effects) current-timeline
-                (recur current-timeline remaining-effects))))
-        _ (tap> ["hey" effect-timeline])]
+                (recur current-timeline remaining-effects))))]
     (cond-> original-timeline
       (not-empty effect-timeline) (into effect-timeline))))
 

@@ -99,15 +99,11 @@
    [:actor/aluxes :attr/hp 800]
    [:actor/aluxes :attr/mp 10]])
 
-(defn turn-model [{:battle-data/keys [actors]}]
-  (let [moment-per-turn (count actors)]
-    (fn [history] [(take moment-per-turn history) (drop moment-per-turn history)])))
-
 (def battle-data
   #:battle-data
    {:num-actions-per-turn 2
     :actors [:actor/hilda :actor/aluxes]
-    :active-effects []
+    :active-effects [poison-effect]
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (poison :actor/aluxes))}
