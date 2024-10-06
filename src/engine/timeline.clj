@@ -72,54 +72,26 @@
         new-timeline (drop 1 new-timeline)]
     new-timeline))
 
-(defn memoized-reduce-timeline
-  [model initial-moment battle-data turn]
-  (if (<= turn 0)
-    [initial-moment]
-    (let [battle-data-on-current-turn (update battle-data :battle-data/history #(drop (* (dec turn) (:battle-data/num-actions-per-turn battle-data)) %))
-          prevous-turn-timeline       (memoized-reduce-timeline model initial-moment battle-data (dec turn))
-          new-timeline                (reduce-battle-data model (peek prevous-turn-timeline) battle-data-on-current-turn)]
-      (into prevous-turn-timeline new-timeline))))
-
-
 (defn reduce-timeline
   ([model initial-moment battle-data]
-   (reduce-timeline model initial-moment battle-data Integer/MAX_VALUE))
-  ([model initial-moment battle-data turn-limit]
-   (let [{:battle-data/keys [num-actions-per-turn active-effects history-atom]} battle-data
-         history @history-atom]
-     (loop [timeline [initial-moment] limit turn-limit remaining-actions history]
-       (if (or (= limit 0) (empty? remaining-actions))
-         timeline
-         (let [actions-per-turn (take num-actions-per-turn remaining-actions)
-               remaining-actions (drop num-actions-per-turn remaining-actions)
-               moment (peek timeline)
-               new-timeline (conj [] (cond-> (transform-entity moment :info/timeline {:timeline/turn inc})
-                                       (empty? remaining-actions) (conj [:info/timeline :timeline/last-turn? true])))
-               new-timeline (loop [moment-timeline new-timeline
-                                   [action-moment & remaining-action] actions-per-turn]
-                              (let [{:moment/keys [whose action]} action-moment
-                                    moment-timeline (reduce-effects moment-timeline active-effects #:moment{:whose whose :event :event/on-moment-begins})
-                                    alter (do-eval model action)
-                                    moment (peek moment-timeline)
-                                    new-moment (-> moment (overwrite-entity :info/moment action-moment) (alter))
-                                    moment-timeline (conj moment-timeline new-moment)
-                                    moment-timeline (reduce-effects moment-timeline active-effects  #:moment{:whose whose :event :event/on-moment-ends})]
-                                (if (empty? remaining-action)
-                                  moment-timeline
-                                  (recur moment-timeline remaining-action))))
-               new-timeline (drop 1 new-timeline)
-               updated-timeline (into timeline new-timeline)]
-           (recur updated-timeline (dec limit) remaining-actions)))))))
+   (let [{:battle-data/keys [num-actions-per-turn history]} battle-data
+         max-turn (/ (count history) num-actions-per-turn)]
+     (reduce-timeline model initial-moment battle-data max-turn)))
+  ([model initial-moment battle-data turn]
+   (if (<= turn 0)
+     [initial-moment]
+     (let [battle-data-on-current-turn (update battle-data :battle-data/history #(drop (* (dec turn) (:battle-data/num-actions-per-turn battle-data)) %))
+           prevous-turn-timeline       (reduce-timeline model initial-moment battle-data (dec turn))
+           new-timeline                (reduce-battle-data model (peek prevous-turn-timeline) battle-data-on-current-turn)]
+       (into prevous-turn-timeline new-timeline)))))
 
 
 (comment
-  (require '[model.hilda :refer [initial-moment battle-data battle-data-2]])
+  (require '[model.hilda :refer [initial-moment battle-data]])
   (add-tap #(def last-tap %))
   (add-tap #(println %))
   last-tap
 
   (count (-> battle-data :battle-data/history-atom deref))
 
-  (= (reduce-timeline 'model.hilda initial-moment battle-data 2)
-     (memoized-reduce-timeline 'model.hilda initial-moment battle-data-2 2)))
+  (reduce-timeline 'model.hilda initial-moment battle-data 2))

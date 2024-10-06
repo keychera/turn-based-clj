@@ -14,4 +14,4 @@
    {:num-actions-per-turn (count players)
     :actors players
     :active-effects active-effects
-    :history-atom (atom history)})
+    :history history})

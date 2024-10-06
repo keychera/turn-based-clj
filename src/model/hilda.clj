@@ -99,7 +99,7 @@
    [:actor/aluxes :attr/hp 800]
    [:actor/aluxes :attr/mp 10]])
 
-(def battle-data-2
+(def battle-data
   #:battle-data
    {:num-actions-per-turn 2
     :actors [:actor/hilda :actor/aluxes]
@@ -119,27 +119,6 @@
               :action '(-> :actor/hilda (magic-up))}
      #:moment{:whose  :actor/aluxes
               :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]})
-
-(def battle-data
-  #:battle-data
-   {:num-actions-per-turn 2
-    :actors [:actor/hilda :actor/aluxes]
-    :active-effects [poison-effect]
-    :history-atom
-    (atom [#:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (poison :actor/aluxes))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-          
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (charm :actor/aluxes))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-          
-           #:moment{:whose  :actor/hilda
-                    :action '(-> :actor/hilda (magic-up))}
-           #:moment{:whose  :actor/aluxes
-                    :action '(-> :actor/aluxes (basic-attack :actor/hilda))}])})
 
 (comment
   #_{:clj-kondo/ignore [:duplicate-require]}
