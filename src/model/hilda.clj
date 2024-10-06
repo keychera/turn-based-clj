@@ -105,20 +105,13 @@
     :actors [:actor/hilda :actor/aluxes]
     :active-effects [poison-effect]
     :history
-    [#:moment{:whose  :actor/hilda
-              :action '(-> :actor/hilda (poison :actor/aluxes))}
-     #:moment{:whose  :actor/aluxes
-              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-     #:moment{:whose  :actor/hilda
-              :action '(-> :actor/hilda (charm :actor/aluxes))}
-     #:moment{:whose  :actor/aluxes
-              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
-
-     #:moment{:whose  :actor/hilda
-              :action '(-> :actor/hilda (magic-up))}
-     #:moment{:whose  :actor/aluxes
-              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]})
+    (->>  (iterate identity [#:moment{:whose  :actor/hilda
+                                      :action '(-> :actor/hilda (poison :actor/aluxes))}
+                             #:moment{:whose  :actor/aluxes
+                                      :action '(-> :actor/aluxes (basic-attack :actor/hilda))}])
+          (take 50)
+          (mapcat identity)
+          (into []))})
 
 (comment
   #_{:clj-kondo/ignore [:duplicate-require]}
@@ -127,6 +120,6 @@
   (add-tap #(println %))
 
   ;; just for removing warning 
-  basic-attack fireball magic-up poison charm
+  basic-attack fireball magic-up poison charm 
 
-  (reduce-timeline 'model.hilda initial-moment battle-data 1))
+  (time (reduce-timeline 'model.hilda initial-moment battle-data 1)))

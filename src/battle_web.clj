@@ -15,6 +15,7 @@
    (let [timeline (reduce-timeline 'model.hilda initial-moment battle-data turn#)
          timeline-per-turn (->> timeline (group-by #(get-attr % :info/timeline :timeline/turn)))
          curr-moments (get timeline-per-turn turn#)
+         ;; TODO performance issue on turns > 30
          prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
          last-moment? (= (inc moment#) (count curr-moments))
          last-turn? (get-attr (first curr-moments) :info/timeline :timeline/last-turn?)
