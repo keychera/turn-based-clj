@@ -30,7 +30,3 @@
 (deftest timeline-limit-1-test
   (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment timeline-test-data 1)]
     (is (= 4 (count actual-timeline)))))
-
-(deftest timeline-no-limit-test
-  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment timeline-test-data)]
-    (is (= 8 (count actual-timeline)))))

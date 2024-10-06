@@ -72,18 +72,15 @@
         new-timeline (drop 1 new-timeline)]
     new-timeline))
 
-(defn reduce-timeline
-  ([model initial-moment battle-data]
-   (let [{:battle-data/keys [num-actions-per-turn history]} battle-data
-         max-turn (/ (count history) num-actions-per-turn)]
-     (reduce-timeline model initial-moment battle-data max-turn)))
-  ([model initial-moment battle-data turn]
-   (if (<= turn 0)
-     [initial-moment]
-     (let [battle-data-on-current-turn (update battle-data :battle-data/history #(drop (* (dec turn) (:battle-data/num-actions-per-turn battle-data)) %))
-           prevous-turn-timeline       (reduce-timeline model initial-moment battle-data (dec turn))
-           new-timeline                (reduce-battle-data model (peek prevous-turn-timeline) battle-data-on-current-turn)]
-       (into prevous-turn-timeline new-timeline)))))
+(def reduce-timeline
+  (memoize
+   (fn [model initial-moment battle-data turn]
+     (if (<= turn 0)
+       [initial-moment]
+       (let [battle-data-on-current-turn (update battle-data :battle-data/history #(drop (* (dec turn) (:battle-data/num-actions-per-turn battle-data)) %))
+             prevous-turn-timeline       (reduce-timeline model initial-moment battle-data (dec turn))
+             new-timeline                (reduce-battle-data model (peek prevous-turn-timeline) battle-data-on-current-turn)]
+         (into prevous-turn-timeline new-timeline))))))
 
 
 (comment

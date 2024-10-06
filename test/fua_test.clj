@@ -40,15 +40,15 @@
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
 (deftest test-clara-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda clara-initial-moment test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda clara-initial-moment test-fua-history 3)]
     (is (= 10 (count actual-timeline)))))
 
 (deftest test-blade-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda blade-initial-moment test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda blade-initial-moment test-fua-history 3)]
     (is (= 8 (count actual-timeline)))))
 
 (deftest test-clara-blade-talent
-  (let [actual-timeline (reduce-timeline 'model.hilda clara-blade-initial-moment test-fua-history)]
+  (let [actual-timeline (reduce-timeline 'model.hilda clara-blade-initial-moment test-fua-history 3)]
     (is (= 11 (count actual-timeline)))))
 
 (comment

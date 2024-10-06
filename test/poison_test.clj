@@ -32,9 +32,8 @@
                     :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
            (get-entity (nth actual-timeline 1) :info/moment)))))
 
-(reduce-timeline 'model.hilda default-initial-moment test-poison-data)
 (deftest test-poison
-  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-poison-data)]
+  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-poison-data 3)]
     (is (= 8 (count actual-timeline)))
     (is (= 0 (get-attr (first actual-timeline) :info/timeline :timeline/turn)))
     (is (= 1 (get-attr (nth actual-timeline 1) :info/timeline :timeline/turn)))
@@ -67,7 +66,7 @@
              :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
 
 (deftest test-both-poison
-  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-both-poison-data)]
+  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-both-poison-data 3)]
     (is (= 9 (count actual-timeline)))
     (is (= 0 (get-attr (first actual-timeline) :info/timeline :timeline/turn)))
     (is (= 1 (get-attr (nth actual-timeline 1) :info/timeline :timeline/turn)))
