@@ -9,8 +9,9 @@
    [:actor/aluxes :attr/hp 800]
    [:actor/aluxes :attr/mp 10]])
 
-(defn build-history [players history]
+(defn build-history [players active-effects history]
   #:battle-data
-   {:num-moment-per-turn (count players)
+   {:num-actions-per-turn (count players)
     :actors players
+    :active-effects active-effects
     :history-atom (atom history)})

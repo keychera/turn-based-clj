@@ -1,5 +1,5 @@
 (ns model.hilda
-  (:require [engine.timeline :refer [reduce-effect-duration unleash-effect]]
+  (:require [engine.timeline :refer [reduce-effect-duration]]
             [engine.triplestore :refer [gen-dynamic-eid get-attr
                                         transform-entity]]
             [pod.huahaiy.datalevin :as d]))
@@ -50,15 +50,30 @@
            (transform-entity effect-entity #:effect-data{:effect-name effect-name :source actor :duration duration})
            (transform-entity :info/moment {:moment/desc (str actor " poisons " target " ! " target " is now poisoned!")}))))))
 
-(defmethod unleash-effect [:debuff/poison :event/on-turn-begins]
-  [{:effect-data/keys [affected moment] :as effect-data}]
-  (let [affected-hp (get-attr moment affected :attr/hp)
-        damage      (Math/floor (/ affected-hp 10))]
-    (-> moment
-        (reduce-effect-duration effect-data)
-        (transform-entity affected {:attr/hp #(- % damage)})
-        (transform-entity :info/moment {:moment/affected affected :moment/damage damage
-                                        :moment/desc (str affected " is poisoned! receives " damage " damage!")}))))
+(def poison-effect
+  #:effect
+   {:activation-query
+    '[:find [?affected ?source ?eid ?duration]
+      :where
+      [:info/moment :moment/event :event/on-moment-begins]
+      [:info/moment :moment/whose ?affected]
+      [?affected :attr/effects ?eid]
+      [?eid :effect-data/effect-name :debuff/poison]
+      [?eid :effect-data/source ?source]
+      [?eid :effect-data/duration ?duration]]
+    :unleash
+    (fn [moment [affected source eid duration]]
+      (let [affected-hp (get-attr moment affected :attr/hp)
+            damage      (Math/floor (/ affected-hp 10))
+            effect-data #:effect-data{:affected affected :source source :effect-id eid :duration duration}]
+        (-> moment
+            (reduce-effect-duration effect-data)
+            (transform-entity affected {:attr/hp #(- % damage)})
+            (transform-entity :info/moment #:moment{:effect-name :debuff/poison
+                                                    :affected    affected
+                                                    :damage      damage
+                                                    :desc        (str affected " is poisoned! receives " damage " damage!")}))))})
+
 
 (defn charm [actor target]
   (fn charm [moment]
@@ -90,8 +105,9 @@
 
 (def battle-data
   #:battle-data
-   {:num-moment-per-turn 2
+   {:num-actions-per-turn 2
     :actors [:actor/hilda :actor/aluxes]
+    :active-effects []
     :history-atom
     (atom [#:moment{:whose  :actor/hilda
                     :action '(-> :actor/hilda (poison :actor/aluxes))}
@@ -136,6 +152,5 @@
 
   ;; just for removing warning 
   basic-attack fireball magic-up poison charm
-  turn-model
 
   (reduce-timeline 'model.hilda initial-moment battle-data 1))

@@ -25,6 +25,7 @@
 (def test-fua-history
   (build-history
    [:actor/aluxes :actor/hilda]
+   []
    [#:moment{:whose  :actor/hilda
              :action '(-> :actor/hilda (fireball :actor/aluxes))}
     #:moment{:whose  :actor/aluxes

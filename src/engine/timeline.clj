@@ -1,6 +1,5 @@
 (ns engine.timeline
-  (:require [engine.triplestore :refer [get-entity overwrite-entity
-                                        remove-triples transform-entity]]
+  (:require [engine.triplestore :refer [overwrite-entity remove-triples transform-entity]]
             [pod.huahaiy.datalevin :as d]))
 
 
@@ -13,39 +12,40 @@
                                  (remove-triples [effect-id '_ '_]))
           :else (transform-entity moment effect-id {:effect-data/duration new-duration}))))
 
-;; this multimethod has no :default on purpose
-;; because checking is done with get-method 
-;; to avoid unnecessary queries when passing complete effect-data
-(defmulti unleash-effect (juxt :effect-data/effect-name :effect-data/event))
+(def poison
+  [[:info/moment :moment/whose :actor/aluxes]
+   [:actor/aluxes :attr/effects 1]
+   [:actor/hilda :attr/effects 1]
+   [:actor/aluxes :attr/effects 2]
+   [1 :effect-data/effect-name :debuff/poison]
+   [1 :effect-data/source :actor/hilda]
+   [1 :effect-data/duration 3]])
 
-(defn get-active-effects [moment event]
-  (->> moment
-       (d/q '[:find ?affected ?effect-id ?effect-name
-              :where [?affected :attr/effects ?effect-id]
-              [?effect-id :effect-data/effect-name ?effect-name]])
-       (filter (fn [[_ _ effect-name]]
-                 (get-method unleash-effect [effect-name event])))))
+(d/q '[:find [?affected ?source ?eid ?duration]
+       :where
+       [:info/moment :moment/whose ?affected]
+       [?affected :attr/effects ?eid]
+       [?eid :effect-data/effect-name :debuff/poison]
+       [?eid :effect-data/source ?source]
+       [?eid :effect-data/duration ?duration]]
+     poison)
 
-(defn reduce-effects [original-timeline event]
-  (let [current-moment (peek original-timeline)
-        active-effects (get-active-effects current-moment event)
+
+(defn reduce-effects [original-timeline effects action]
+  (let [emerging-moment (overwrite-entity (peek original-timeline) :info/moment action)
         effect-timeline
-        (loop [current-timeline []
-               remaining-effects active-effects]
-          (if (empty? remaining-effects)
-            current-timeline
-            (let [prev-moment (or (peek current-timeline) current-moment)
-                  [effect-to-unleash & remaining-effects] remaining-effects
-                  [affected effect-id effect-name] effect-to-unleash
-                  new-moment (some-> (unleash-effect (merge #:effect-data{:effect-id effect-id :event event
-                                                                          :affected affected :moment prev-moment}
-                                                            (get-entity current-moment effect-id)))
-                                     (transform-entity :info/moment #:moment{:effect-name effect-name
-                                                                             :event event}))]
-              (recur (cond-> current-timeline
-                       (some? new-moment) (conj new-moment))
-                     remaining-effects))))]
-    (into original-timeline effect-timeline)))
+        (loop [current-timeline [] [effect & remaining-effects] effects]
+          (let [current-moment (or (peek current-timeline) emerging-moment)
+                {:effect/keys [activation-query unleash]} effect
+                effect-result (when (some? effect) (d/q activation-query current-moment))
+                new-moment (when (some? effect-result) (unleash current-moment effect-result))
+                current-timeline (cond-> current-timeline
+                                   (some? new-moment) (conj new-moment))]
+            (if (empty? remaining-effects) current-timeline
+                (recur current-timeline remaining-effects))))
+        _ (tap> ["hey" effect-timeline])]
+    (cond-> original-timeline
+      (not-empty effect-timeline) (into effect-timeline))))
 
 (defn do-eval [ns-symbol form]
   (require ns-symbol)
@@ -56,40 +56,36 @@
   ([model initial-moment battle-data]
    (reduce-timeline model initial-moment battle-data Integer/MAX_VALUE))
   ([model initial-moment battle-data turn-limit]
-   (let [{:battle-data/keys [num-moment-per-turn history-atom]} battle-data
+   (let [{:battle-data/keys [num-actions-per-turn active-effects history-atom]} battle-data
          history @history-atom]
-     (loop [timeline [initial-moment] limit turn-limit remaining-turns history]
-       (if (or (= limit 0) (empty? remaining-turns))
+     (loop [timeline [initial-moment] limit turn-limit remaining-actions history]
+       (if (or (= limit 0) (empty? remaining-actions))
          timeline
-         (let [moments-per-turn (take num-moment-per-turn remaining-turns)
-               remaining-turns (drop num-moment-per-turn remaining-turns)
+         (let [actions-per-turn (take num-actions-per-turn remaining-actions)
+               remaining-actions (drop num-actions-per-turn remaining-actions)
                moment (peek timeline)
                new-timeline (conj [] (cond-> (transform-entity moment :info/timeline {:timeline/turn inc})
-                                       (empty? remaining-turns) (conj [:info/timeline :timeline/last-turn? true])))
-               new-timeline (reduce-effects new-timeline :event/on-turn-begins)
+                                       (empty? remaining-actions) (conj [:info/timeline :timeline/last-turn? true])))
                new-timeline (loop [moment-timeline new-timeline
-                                   [moment & remaining-moments] moments-per-turn]
-                              (let [{:moment/keys [action] :as current-moment} moment
-                                    moment-timeline (reduce-effects moment-timeline :event/on-moment-begins)
+                                   [action-moment & remaining-action] actions-per-turn]
+                              (let [{:moment/keys [whose action]} action-moment
+                                    moment-timeline (reduce-effects moment-timeline active-effects #:moment{:whose whose :event :event/on-moment-begins})
                                     alter (do-eval model action)
                                     moment (peek moment-timeline)
-                                    new-moment (-> moment
-                                                   (overwrite-entity :info/moment current-moment)
-                                                   (alter))
+                                    new-moment (-> moment (overwrite-entity :info/moment action-moment) (alter))
                                     moment-timeline (conj moment-timeline new-moment)
-                                    moment-timeline (reduce-effects moment-timeline :event/on-moment-ends)]
-                                (if (empty? remaining-moments)
+                                    moment-timeline (reduce-effects moment-timeline active-effects  #:moment{:whose whose :event :event/on-moment-ends})]
+                                (if (empty? remaining-action)
                                   moment-timeline
-                                  (recur moment-timeline remaining-moments))))
-               new-timeline (reduce-effects new-timeline :event/on-turn-ends)
+                                  (recur moment-timeline remaining-action))))
                new-timeline (drop 1 new-timeline)
                updated-timeline (into timeline new-timeline)]
-           (recur updated-timeline (dec limit) remaining-turns)))))))
+           (recur updated-timeline (dec limit) remaining-actions)))))))
 
 (comment
   (require '[model.hilda :refer [initial-moment battle-data]])
   (add-tap #(def last-tap %))
-  (add-tap #(println %))
+  (add-tap println)
   last-tap
 
   (reduce-timeline 'model.hilda initial-moment battle-data 2))

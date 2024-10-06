@@ -1,13 +1,15 @@
 (ns poison-test
   (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [deftest is]]
             [engine.timeline :refer [reduce-timeline]]
             [engine.triplestore :refer [get-attr get-entity]]
+            [model.hilda :as hilda]
             [util.test-data :refer [build-history default-initial-moment]]))
 
 (def test-poison-data
   (build-history
    [:actor/aluxes :actor/hilda]
+   [hilda/poison-effect]
    [#:moment{:whose  :actor/hilda
              :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
     #:moment{:whose  :actor/aluxes
@@ -30,15 +32,16 @@
                     :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
            (get-entity (nth actual-timeline 1) :info/moment)))))
 
+(reduce-timeline 'model.hilda default-initial-moment test-poison-data)
 (deftest test-poison
   (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment test-poison-data)]
     (is (= 8 (count actual-timeline)))
     (is (= 0 (get-attr (first actual-timeline) :info/timeline :timeline/turn)))
     (is (= 1 (get-attr (nth actual-timeline 1) :info/timeline :timeline/turn)))
-    (is (= 1 (get-attr (nth actual-timeline 2) :info/timeline :timeline/turn)))
-    (let [poison-moment (nth actual-timeline 3)]
+    (let [poison-moment (nth actual-timeline 2)]
       (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
-      (is (= (get-attr poison-moment :info/moment :moment/effect-name) :debuff/poison)))
+      (is (= :debuff/poison (get-attr poison-moment :info/moment :moment/effect-name))))
+    (is (= 1 (get-attr (nth actual-timeline 3) :info/timeline :timeline/turn)))
     (is (= 2 (get-attr (nth actual-timeline 4) :info/timeline :timeline/turn)))
     (is (= 2 (get-attr (nth actual-timeline 5) :info/timeline :timeline/turn)))
     (is (= 3 (get-attr (nth actual-timeline 6) :info/timeline :timeline/turn)))
@@ -47,6 +50,7 @@
 (def test-both-poison-data
   (build-history
    [:actor/aluxes :actor/hilda]
+   [hilda/poison-effect]
    [#:moment{:whose  :actor/hilda
              :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
     #:moment{:whose  :actor/aluxes
@@ -67,16 +71,15 @@
     (is (= 9 (count actual-timeline)))
     (is (= 0 (get-attr (first actual-timeline) :info/timeline :timeline/turn)))
     (is (= 1 (get-attr (nth actual-timeline 1) :info/timeline :timeline/turn)))
-    (is (= 1 (get-attr (nth actual-timeline 2) :info/timeline :timeline/turn)))
-    (let [poison-moment (nth actual-timeline 3)]
+    (let [poison-moment (nth actual-timeline 2)]
       (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
-      (is (= (get-attr poison-moment :info/moment :moment/effect-name) :debuff/poison))
-      ;; the order the poison unleashed needs some rethinking
-      (is (= (get-attr poison-moment :info/moment :moment/affected) :actor/hilda)))
+      (is (= :debuff/poison (get-attr poison-moment :info/moment :moment/effect-name))) 
+      (is (= :actor/aluxes (get-attr poison-moment :info/moment :moment/affected))))
+    (is (= 1 (get-attr (nth actual-timeline 3) :info/timeline :timeline/turn)))
     (let [poison-moment (nth actual-timeline 4)]
       (is (str/includes? (get-attr poison-moment :info/moment :moment/desc) "poison"))
-      (is (= (get-attr poison-moment :info/moment :moment/effect-name) :debuff/poison))
-      (is (= (get-attr poison-moment :info/moment :moment/affected) :actor/aluxes)))
+      (is (= :debuff/poison (get-attr poison-moment :info/moment :moment/effect-name)))
+      (is (= :actor/hilda (get-attr poison-moment :info/moment :moment/affected))))
     (is (= 2 (get-attr (nth actual-timeline 5) :info/timeline :timeline/turn)))
     (is (= 2 (get-attr (nth actual-timeline 6) :info/timeline :timeline/turn)))
     (is (= 3 (get-attr (nth actual-timeline 7) :info/timeline :timeline/turn)))
