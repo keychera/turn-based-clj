@@ -1,5 +1,7 @@
 (ns engine2.try-datalevin
-  (:require [babashka.fs :as fs]))
+  (:require [babashka.fs :as fs]
+            [clojure.walk :refer [prewalk]]
+            [com.rpl.specter :as sp]))
 
 (require '[babashka.pods :as pods])
 (pods/load-pod 'huahaiy/datalevin "0.9.10")
@@ -31,6 +33,9 @@
 
 (def schema (merge Moment Actor Effect))
 
+(defn remove-dbid-recursively [m]
+  (prewalk (fn [node] (cond-> node (map? node) (dissoc :db/id))) m))
+
 (comment
   (def conn (d/get-conn "tmp/datalevin/rpg" schema))
   (d/transact! conn
@@ -59,6 +64,21 @@
          [?eid :actor.attr/name ?actor]]
        (d/db conn)
        0 :actor/hilda)
+
+  ;; create new moment
+  (let [prev-turn      0
+        current-moment (d/q '[:find (pull ?moment [*]) .
+                              :in $ ?turn
+                              :where [?moment :moment.attr/turn ?turn]]
+                            (d/db conn)
+                            prev-turn)
+        alter          (fn [moment]
+                         (->> moment
+                              remove-dbid-recursively
+                              (sp/transform [:moment.attr/turn] inc)
+                              (sp/transform [:moment.attr/entities sp/ALL #(= :actor/hilda (:actor.attr/name %)) :actor.attr/hp] #(- % 100))))
+        new-moment     (alter current-moment)]
+    (d/transact! conn [new-moment]))
 
 
   (d/close conn)
