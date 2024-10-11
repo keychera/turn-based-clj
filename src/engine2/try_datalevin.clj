@@ -32,6 +32,30 @@
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
         (finally (d/close timeline))))
 
+  (#_:query-specific-moment
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (let [epoch    1
+              moment   (d/q '[:find ?moment ?attr ?attr-val
+                              :in $ ?epoch :where
+                              [?moment :moment.attr/epoch ?epoch]
+                              [?moment ?attr ?attr-val]]
+                            (d/db timeline) epoch)
+              entities (d/q '[:find ?eid ?attr ?attr-val
+                              :in $ ?epoch :where
+                              [?moment :moment.attr/epoch ?epoch]
+                              [?moment :moment.attr/entities ?eid]
+                              [?eid ?attr ?attr-val]]
+                            (d/db timeline) epoch)
+              effects (d/q '[:find ?eff-id ?attr ?attr-val
+                             :in $ ?epoch :where
+                             [?moment :moment.attr/epoch ?epoch]
+                             [?moment :moment.attr/entities ?eid]
+                             [?eid :actor.attr/effects ?eff-id]
+                             [?eff-id ?attr ?attr-val]]
+                           (d/db timeline) epoch)]
+          (-> moment (into entities) (into effects)))
+        (finally (d/close timeline))))
+
   (#_:get-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
    (try (->> (get-moment timeline 3)
