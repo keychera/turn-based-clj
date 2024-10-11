@@ -15,13 +15,18 @@
     (str "tmp/random/rpg-" @last-rand)
     "tmp/rpg"))
 
+(defn deal-with [it]
+  (str it " dealt!"))
+
 (comment
+  deal-with
   (swap! random-db? not)
 
   @random-db?
 
   (#_:init-rand-db
-   let [rand-id (rand 42) _ (reset! last-rand rand-id)
+   let [rand-id  (rand 42)
+        _        (reset! last-rand rand-id)
         database (datasource)
         timeline (d/get-conn database timeline-schema)]
    (try (println "init timeline on" database)
@@ -30,6 +35,16 @@
   (#_:query-all
    let [timeline (d/get-conn (datasource) timeline-schema)]
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
+        (finally (d/close timeline))))
+
+  (#_:transact-weird-stuff
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (d/transact! timeline [[:db/add "poison" :rule/name :debuff/poison]
+                               [:db/add "poison" :rule/activation '[:find]]
+                               [:db/add "poison" :rule/unleash-fn 'engine2.try-datalevin/deal-with]])
+        (let [{:rule/keys [name activation unleash-fn]} (d/touch (d/entity (d/db timeline) [:rule/name :debuff/poison]))
+              unleash                                   (eval unleash-fn)]
+          [name activation unleash-fn (unleash 1)])
         (finally (d/close timeline))))
 
   (#_:query-specific-moment
@@ -46,13 +61,13 @@
                               [?moment :moment.attr/entities ?eid]
                               [?eid ?attr ?attr-val]]
                             (d/db timeline) epoch)
-              effects (d/q '[:find ?eff-id ?attr ?attr-val
-                             :in $ ?epoch :where
-                             [?moment :moment.attr/epoch ?epoch]
-                             [?moment :moment.attr/entities ?eid]
-                             [?eid :actor.attr/effects ?eff-id]
-                             [?eff-id ?attr ?attr-val]]
-                           (d/db timeline) epoch)]
+              effects  (d/q '[:find ?eff-id ?attr ?attr-val
+                              :in $ ?epoch :where
+                              [?moment :moment.attr/epoch ?epoch]
+                              [?moment :moment.attr/entities ?eid]
+                              [?eid :actor.attr/effects ?eff-id]
+                              [?eff-id ?attr ?attr-val]]
+                            (d/db timeline) epoch)]
           (-> moment (into entities) (into effects)))
         (finally (d/close timeline))))
 

@@ -5,6 +5,13 @@
 (require '[pod.huahaiy.datalevin :as d])
 
 ;; datalevin
+(def Rule
+  #:rule
+   {:name       {:db/unique    :db.unique/identity
+                 :db/valueType :db.type/keyword}
+    :activation {:db/cardinality :db.cardinality/one}
+    :unleash-fn {:db/cardinality :db.cardinality/one}})
+
 (def Moment
   #:moment.attr
    {:epoch    {:db/cardinality :db.cardinality/one}
@@ -38,7 +45,7 @@
     :duration    {:db/cardinality :db.cardinality/one}
     :source      {:db/valueType :db.type/ref}})
 
-(def timeline-schema (merge Moment Action Actor Effect))
+(def timeline-schema (merge Rule Moment Action Actor Effect))
 
 (defn get-moment [conn epoch]
   (->> (d/q '[:find (pull ?moment [*]) .
