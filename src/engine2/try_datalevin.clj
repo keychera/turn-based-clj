@@ -39,17 +39,17 @@
 
   (#_:transact-weird-stuff
    let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (d/transact! timeline [[:db/add "poison" :rule/name :debuff/poison]
-                               [:db/add "poison" :rule/activation '[:find]]
-                               [:db/add "poison" :rule/unleash-fn 'engine2.try-datalevin/deal-with]])
-        (let [{:rule/keys [name activation unleash-fn]} (d/touch (d/entity (d/db timeline) [:rule/name :debuff/poison]))
-              unleash                                   (eval unleash-fn)]
-          [name activation unleash-fn (unleash 1)])
-        (finally (d/close timeline))))
+   (try #_(d/transact! timeline [[:db/add "poison" :rule/name :debuff/charm]
+                                 [:db/add "poison" :rule/activation '[:find]]
+                                 [:db/add "poison" :rule/unleash-fn 'engine2.try-datalevin/deal-with]])
+    (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
+          unleash                                   (eval rule-fn)]
+      [rule-name activation rule-fn (unleash 1)])
+        (finally (d/close timeline)))) 
 
   (#_:query-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (let [epoch    1
+   (try (let [epoch    2
               moment   (d/q '[:find ?moment ?attr ?attr-val
                               :in $ ?epoch :where
                               [?moment :moment.attr/epoch ?epoch]
@@ -78,7 +78,10 @@
              (sp/setval [(entity :char/hilda) :actor.attr/effects sp/AFTER-ELEM] "new effect"))
         (finally (d/close timeline))))
 
-  (engrave! topaz/history topaz/initial-moment 'model.topaz)
+  (engrave! (d/get-conn (datasource) timeline-schema) 
+            topaz/world topaz/history)
+  
+  (add-tap #(def last-tap %))
 
   (fs/delete-tree "tmp/rpg")
   (fs/delete-tree "tmp/random")

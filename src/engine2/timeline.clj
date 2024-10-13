@@ -7,10 +7,10 @@
 ;; datalevin
 (def Rule
   #:rule
-   {:name       {:db/unique    :db.unique/identity
+   {:rule-name  {:db/unique    :db.unique/identity
                  :db/valueType :db.type/keyword}
     :activation {:db/cardinality :db.cardinality/one}
-    :unleash-fn {:db/cardinality :db.cardinality/one}})
+    :rule-fn    {:db/cardinality :db.cardinality/one}})
 
 (def Moment
   #:moment.attr
@@ -25,13 +25,13 @@
 
 (def Actor
   #:actor.attr
-   {:name    {:db/cardinality :db.cardinality/one
-              :db/valueType   :db.type/keyword}
-    :hp      {:db/cardinality :db.cardinality/one}
-    :mp      {:db/cardinality :db.cardinality/one}
-    :effects {:db/valueType   :db.type/ref
-              :db/cardinality :db.cardinality/many
-              :db/isComponent true}})
+   {:actor-name {:db/cardinality :db.cardinality/one
+                 :db/valueType   :db.type/keyword}
+    :hp         {:db/cardinality :db.cardinality/one}
+    :mp         {:db/cardinality :db.cardinality/one}
+    :effects    {:db/valueType   :db.type/ref
+                 :db/cardinality :db.cardinality/many
+                 :db/isComponent true}})
 
 (def Action
   #:action.attr
@@ -70,25 +70,28 @@
    :actor.attr/effects sp/ALL #(= effect-name (:effect.attr/effect-name %))])
 
 ;; timeline core
-(defn do-eval [ns-symbol form]
-  (require ns-symbol)
-  (let [user-ns (create-ns ns-symbol)]
-    (binding [*ns* user-ns] (clojure.core/eval form))))
-
-(defn engrave! [history initial-moment under-namespace]
-  (let [timeline (d/get-conn (str "tmp/rpg") timeline-schema)]
-    (try
-      (d/transact! timeline [initial-moment])
+(defn engrave! [timeline world history]
+  (try
+    (let [{:world/keys [moves _effects initial]} world
+          moves (-> moves (update-vals eval))]
+      (d/transact! timeline [initial])
       (loop [epoch 0
              [action & remaining-actions] history]
-        (let [{:action.attr/keys [act-expr]} action
-              alter (do-eval under-namespace act-expr)
+        (let [{:action.attr/keys [actor act-expr]} action
+              [move move-attr] act-expr 
+              move-attr (-> move-attr
+                            (assoc :move.attr/actor actor)
+                            (assoc :move.attr/move-name move))
+              alter (get moves move)
               moment (make-new-entity (get-moment timeline epoch))
-              new-moment (->> (alter moment)
+              _ (prn moves world)
+              _ (tap> [alter moment move-attr])
+              new-moment (->> (alter moment move-attr)
                               (sp/transform [:moment.attr/epoch] inc)
-                              (sp/setval    [:moment.attr/events] [(update action :action.attr/act-expr str)]))]
+                              (sp/setval    [:moment.attr/events]
+                                            [(update action :action.attr/act-expr str)]))]
           (d/transact! timeline [new-moment])
           (if (empty? remaining-actions)
             ["last-moment" (get-moment timeline (inc epoch))]
-            (recur (inc epoch) remaining-actions))))
-      (finally (d/close timeline)))))
+            (recur (inc epoch) remaining-actions)))))
+    (finally (d/close timeline))))
