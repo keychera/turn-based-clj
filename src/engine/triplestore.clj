@@ -3,7 +3,7 @@
             [matchete.core :as m]))
 
 (require '[babashka.pods :as pods])
-(pods/load-pod 'huahaiy/datalevin "0.9.10")
+(pods/load-pod 'huahaiy/datalevin "0.9.12")
 (require '[pod.huahaiy.datalevin :as d])
 
 (defn gen-dynamic-eid [store]

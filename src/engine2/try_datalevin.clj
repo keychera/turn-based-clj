@@ -1,7 +1,7 @@
 (ns engine2.try-datalevin)
 
 (require '[babashka.fs :as fs]
-         '[engine2.timeline :refer [timeline-schema entity get-moment engrave!]]
+         '[engine2.timeline :as t :refer [timeline-schema entity]]
          '[model.topaz :as topaz]
          '[pod.huahaiy.datalevin :as d]
          '[com.rpl.specter :as sp])
@@ -37,6 +37,29 @@
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
         (finally (d/close timeline))))
 
+  (#_:query-last-moment
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (->> (d/q '[:find ?last-epoch .
+                    :where [?a :moment.attr/epoch ?last-epoch]
+                    :order-by [?last-epoch :desc]]
+                  (d/db timeline)))
+        (finally (d/close timeline))))
+
+  (let [timeline (d/get-conn "/tmp/random/maybe-bug")
+        biggest-value 100]
+   (try (d/transact! timeline
+                     [[:db/add 1 :value 0] 
+                      [:db/add 2 :value biggest-value]])
+        (println
+         [biggest-value "="
+          (d/q '[:find ?value
+                 :where [?a :value ?value]
+                 :order-by [?value :desc]]
+               (d/db timeline))])
+        (finally (d/close timeline)))) 
+
+  (fs/delete-tree "/tmp/random")
+
   (#_:transact-weird-stuff
    let [timeline (d/get-conn (datasource) timeline-schema)]
    (try #_(d/transact! timeline [[:db/add "poison" :rule/name :debuff/charm]
@@ -45,7 +68,7 @@
     (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
           unleash                                   (eval rule-fn)]
       [rule-name activation rule-fn (unleash 1)])
-        (finally (d/close timeline)))) 
+        (finally (d/close timeline))))
 
   (#_:query-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
@@ -73,14 +96,18 @@
 
   (#_:get-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (->> (get-moment timeline 3)
+   (try (->> (t/q-moment timeline 3)
              (sp/setval [(entity :char/hilda) :actor.attr/effects sp/AFTER-ELEM] "trying this")
              (sp/setval [(entity :char/hilda) :actor.attr/effects sp/AFTER-ELEM] "new effect"))
         (finally (d/close timeline))))
 
-  (engrave! (d/get-conn (datasource) timeline-schema) 
+  (t/engrave! (d/get-conn (datasource) timeline-schema)
             topaz/world topaz/history)
   
+  (t/q-moment (d/get-conn (datasource) timeline-schema) 2)
+  (t/q-last-moment (d/get-conn (datasource) timeline-schema))
+  
+
   (add-tap #(def last-tap %))
 
   (fs/delete-tree "tmp/rpg")

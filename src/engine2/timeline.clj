@@ -47,11 +47,23 @@
 
 (def timeline-schema (merge Rule Moment Action Actor Effect))
 
-(defn get-moment [conn epoch]
-  (->> (d/q '[:find (pull ?moment [*]) .
-              :in $ ?epoch
-              :where [?moment :moment.attr/epoch ?epoch]]
-            (d/db conn) epoch)))
+;; all 'timeline' argument here is a datalevin conn
+;; q- prefix = query functions
+;; ! suffix  = function with db d/transact!
+
+(defn q-moment [timeline epoch]
+  (d/q '[:find (pull ?moment [*]) .
+         :in $ ?epoch
+         :where [?moment :moment.attr/epoch ?epoch]]
+       (d/db timeline) epoch))
+
+(defn q-last-epoch [timeline]
+  (d/q '[:find (max ?last-epoch) .
+         :where [?a :moment.attr/epoch ?last-epoch]]
+       (d/db timeline)))
+
+(defn q-last-moment [timeline]
+  (q-moment timeline (q-last-epoch timeline)))
 
 (defn make-new-entity [m]
   (prewalk (fn [node]
@@ -70,28 +82,30 @@
    :actor.attr/effects sp/ALL #(= effect-name (:effect.attr/effect-name %))])
 
 ;; timeline core
+(defn reify-action #_[-> moment]
+  [timeline moves {:action.attr/keys [actor act-expr] :as action}]
+  (let [[move move-attr] act-expr
+        move-attr        (-> move-attr
+                             (assoc :move.attr/actor actor)
+                             (assoc :move.attr/move-name move))
+        alter            (get moves move)
+        moment           (make-new-entity (q-last-moment timeline))]
+    (->> (alter moment move-attr)
+         (sp/transform [:moment.attr/epoch] inc)
+         (sp/setval    [:moment.attr/events]
+                       [(update action :action.attr/act-expr str)]))))
+
 (defn engrave! [timeline world history]
   (try
-    (let [{:world/keys [moves _effects initial]} world
+    (let [{:world/keys [moves effects initial]} world
           moves (-> moves (update-vals eval))]
       (d/transact! timeline [initial])
-      (loop [epoch 0
-             [action & remaining-actions] history]
-        (let [{:action.attr/keys [actor act-expr]} action
-              [move move-attr] act-expr 
-              move-attr (-> move-attr
-                            (assoc :move.attr/actor actor)
-                            (assoc :move.attr/move-name move))
-              alter (get moves move)
-              moment (make-new-entity (get-moment timeline epoch))
-              _ (prn moves world)
-              _ (tap> [alter moment move-attr])
-              new-moment (->> (alter moment move-attr)
-                              (sp/transform [:moment.attr/epoch] inc)
-                              (sp/setval    [:moment.attr/events]
-                                            [(update action :action.attr/act-expr str)]))]
-          (d/transact! timeline [new-moment])
+      (loop [[action & remaining-actions] history]
+        (let [new-timeline  []
+              action-moment (reify-action timeline moves action)
+              new-timeline  (conj new-timeline action-moment)]
+          (d/transact! timeline new-timeline)
           (if (empty? remaining-actions)
-            ["last-moment" (get-moment timeline (inc epoch))]
-            (recur (inc epoch) remaining-actions)))))
+            ["last-moment" (q-last-moment timeline)]
+            (recur remaining-actions)))))
     (finally (d/close timeline))))
