@@ -82,30 +82,26 @@
    :actor.attr/effects sp/ALL #(= effect-name (:effect.attr/effect-name %))])
 
 ;; timeline core
-(defn reify-action #_[-> moment]
+(defn engrave-action!
   [timeline moves {:action.attr/keys [actor act-expr] :as action}]
   (let [[move move-attr] act-expr
         move-attr        (-> move-attr
                              (assoc :move.attr/actor actor)
                              (assoc :move.attr/move-name move))
         alter            (get moves move)
-        moment           (make-new-entity (q-last-moment timeline))]
-    (->> (alter moment move-attr)
-         (sp/transform [:moment.attr/epoch] inc)
-         (sp/setval    [:moment.attr/events]
-                       [(update action :action.attr/act-expr str)]))))
+        moment           (make-new-entity (q-last-moment timeline))
+        new-moment       (->> (alter moment move-attr)
+                              (sp/transform [:moment.attr/epoch] inc)
+                              (sp/setval    [:moment.attr/events]
+                                            [(update action :action.attr/act-expr str)]))]
+    (d/transact! timeline [new-moment])))
 
 (defn engrave! [timeline world history]
-  (try
-    (let [{:world/keys [moves effects initial]} world
-          moves (-> moves (update-vals eval))]
-      (d/transact! timeline [initial])
-      (loop [[action & remaining-actions] history]
-        (let [new-timeline  []
-              action-moment (reify-action timeline moves action)
-              new-timeline  (conj new-timeline action-moment)]
-          (d/transact! timeline new-timeline)
-          (if (empty? remaining-actions)
-            ["last-moment" (q-last-moment timeline)]
-            (recur remaining-actions)))))
-    (finally (d/close timeline))))
+  (let [{:world/keys [moves effects initial]} world
+        moves (-> moves (update-vals eval))]
+    (d/transact! timeline [initial])
+    (loop [[action & remaining-actions] history]
+      (engrave-action! timeline moves action)
+      (if (empty? remaining-actions)
+        ["last-moment" (q-last-moment timeline)]
+        (recur remaining-actions)))))

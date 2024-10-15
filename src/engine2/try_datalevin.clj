@@ -45,18 +45,29 @@
                   (d/db timeline)))
         (finally (d/close timeline))))
 
+  (#_:transient-op
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (let [transient-t (d/q '[:find ?eid ?attr ?attr-val
+                                 :where
+                                 [?eid ?attr ?attr-val]
+                                 [?moment :moment.attr/epoch 1]
+                                 [?moment :moment.attr/entities ?eid]]
+                               (d/db timeline))]
+          transient-t)
+        (finally (d/close timeline))))
+
   (let [timeline (d/get-conn "/tmp/random/maybe-bug")
         biggest-value 100]
-   (try (d/transact! timeline
-                     [[:db/add 1 :value 0] 
-                      [:db/add 2 :value biggest-value]])
-        (println
-         [biggest-value "="
-          (d/q '[:find ?value
-                 :where [?a :value ?value]
-                 :order-by [?value :desc]]
-               (d/db timeline))])
-        (finally (d/close timeline)))) 
+    (try (d/transact! timeline
+                      [[:db/add 1 :value 0]
+                       [:db/add 2 :value biggest-value]])
+         (println
+          [biggest-value "="
+           (d/q '[:find ?value
+                  :where [?a :value ?value]
+                  :order-by [?value :desc]]
+                (d/db timeline))])
+         (finally (d/close timeline))))
 
   (fs/delete-tree "/tmp/random")
 
@@ -70,28 +81,38 @@
       [rule-name activation rule-fn (unleash 1)])
         (finally (d/close timeline))))
 
+  (#_:query-all
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
+        (finally (d/close timeline))))
+
   (#_:query-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (let [epoch    2
-              moment   (d/q '[:find ?moment ?attr ?attr-val
-                              :in $ ?epoch :where
-                              [?moment :moment.attr/epoch ?epoch]
-                              [?moment ?attr ?attr-val]]
-                            (d/db timeline) epoch)
-              entities (d/q '[:find ?eid ?attr ?attr-val
-                              :in $ ?epoch :where
-                              [?moment :moment.attr/epoch ?epoch]
-                              [?moment :moment.attr/entities ?eid]
-                              [?eid ?attr ?attr-val]]
-                            (d/db timeline) epoch)
-              effects  (d/q '[:find ?eff-id ?attr ?attr-val
-                              :in $ ?epoch :where
-                              [?moment :moment.attr/epoch ?epoch]
-                              [?moment :moment.attr/entities ?eid]
-                              [?eid :actor.attr/effects ?eff-id]
-                              [?eff-id ?attr ?attr-val]]
-                            (d/db timeline) epoch)]
-          (-> moment (into entities) (into effects)))
+   (try (let [epoch          2
+              moment         (d/q '[:find ?moment ?attr ?attr-val
+                                    :in $ ?epoch :where
+                                    [?moment :moment.attr/epoch ?epoch]
+                                    [?moment ?attr ?attr-val]]
+                                  (d/db timeline) epoch)
+              entities       (d/q '[:find ?eid ?attr ?attr-val
+                                    :in $ ?epoch :where
+                                    [?moment :moment.attr/epoch ?epoch]
+                                    [?moment :moment.attr/entities ?eid]
+                                    [?eid ?attr ?attr-val]]
+                                  (d/db timeline) epoch)
+              effects        (d/q '[:find ?eff-id ?attr ?attr-val
+                                    :in $ ?epoch :where
+                                    [?moment :moment.attr/epoch ?epoch]
+                                    [?moment :moment.attr/entities ?eid]
+                                    [?eid :actor.attr/effects ?eff-id]
+                                    [?eff-id ?attr ?attr-val]]
+                                  (d/db timeline) epoch)
+              transient-time (-> moment (into entities) (into effects))]
+          (d/q '[:find ?eid ?attr ?attr-val
+                 :where
+                 [?eid ?attr ?attr-val]
+                 [?eid :actor.attr/hp ?attr-val]]
+               transient-time))
         (finally (d/close timeline))))
 
   (#_:get-specific-moment
@@ -101,12 +122,17 @@
              (sp/setval [(entity :char/hilda) :actor.attr/effects sp/AFTER-ELEM] "new effect"))
         (finally (d/close timeline))))
 
-  (t/engrave! (d/get-conn (datasource) timeline-schema)
-            topaz/world topaz/history)
-  
-  (t/q-moment (d/get-conn (datasource) timeline-schema) 2)
-  (t/q-last-moment (d/get-conn (datasource) timeline-schema))
-  
+  (let [timeline (d/get-conn (datasource) timeline-schema)]
+    (try (t/engrave! timeline topaz/world topaz/history)
+         (finally (d/close timeline))))
+
+  (let [timeline (d/get-conn (datasource) timeline-schema)]
+    (try (t/q-moment (d/get-conn (datasource) timeline-schema) 2)
+         (finally (d/close timeline))))
+
+  (let [timeline (d/get-conn (datasource) timeline-schema)]
+    (try (t/q-last-moment (d/get-conn (datasource) timeline-schema))
+         (finally (d/close timeline))))
 
   (add-tap #(def last-tap %))
 
