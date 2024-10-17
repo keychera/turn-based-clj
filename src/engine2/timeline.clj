@@ -108,19 +108,22 @@
             (prn ["done transacting!"]))))))
 
 (defn engrave-rules!
-  [timeline rules timing]
+  [timeline rules actor timing]
   (loop [current-epoch (q-last-epoch timeline)
-         rules (filter #(= (:rule/timing %) timing) rules)]
-    (let [{:engrave!/keys [unleashed-rules dormant-rules]}
-          (->> rules
-               (mapv (fn [{:rule/keys [activation] :as rule}]
-                       (let [query-stmt (conj activation ['?current-moment :moment.attr/epoch current-epoch])
-                             activated  (d/q query-stmt (d/db timeline))]
-                         [activated rule])))
-               (group-by (fn [[activated _]]
-                           (if (some? activated)
-                             :engrave!/unleashed-rules
-                             :engrave!/dormant-rules))))]
+         rules rules]
+    (let [activation-compl [['?s.current-moment :moment.attr/epoch current-epoch]
+                            :in '$ '?s.who-acts '?s.timing]
+          grouped          (->> rules
+                                (mapv (fn [{:rule/keys [activation] :as rule}]
+                                        (let [query-stmt (apply conj activation activation-compl)
+                                              activated  (d/q query-stmt (d/db timeline) actor timing)]
+                                          [activated rule])))
+                                (group-by (fn [[activated _]]
+                                            (if (some? activated)
+                                              :engrave!/unleashed-rules
+                                              :engrave!/dormant-rules))))
+          unleashed-rules  (:engrave!/unleashed-rules grouped)
+          dormant-rules    (:engrave!/dormant-rules grouped)]
       (when (some? unleashed-rules)
         (prn ["unleashed!" unleashed-rules dormant-rules])
         (unleash-rules! timeline unleashed-rules))
@@ -149,12 +152,13 @@
         moves (-> moves (update-vals eval))]
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
-      (prn "before-action!")
-      (engrave-rules! timeline rules :timing/before-action)
-      (prn "action!")
-      (engrave-action! timeline moves action)
-      (prn "after-action!")
-      (engrave-rules! timeline rules :timing/after-action)
-      (if (empty? remaining-actions)
-        ["last-moment" (q-last-moment timeline)]
-        (recur remaining-actions)))))
+      (let [actor (:action.attr/actor action)]
+        (prn "before-action!")
+        (engrave-rules! timeline rules actor :timing/before-action)
+        (prn "action!")
+        (engrave-action! timeline moves action)
+        (prn "after-action!")
+        (engrave-rules! timeline rules actor :timing/after-action)
+        (if (empty? remaining-actions)
+          ["last-moment" (q-last-moment timeline)]
+          (recur remaining-actions))))))

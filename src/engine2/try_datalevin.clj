@@ -82,18 +82,16 @@
       [rule-name activation rule-fn (unleash 1)])
         (finally (d/close timeline))))
 
-  (#_:query-all
-   let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
-        (finally (d/close timeline))))
+
 
   (#_:query-specific-moment
    let [timeline (d/get-conn (datasource) timeline-schema)]
-   (try (let [epoch          2
+   (try (let [epoch          0
               moment         (d/q '[:find ?moment ?attr ?attr-val
-                                    :in $ ?epoch :where
+                                    :where
                                     [?moment :moment.attr/epoch ?epoch]
-                                    [?moment ?attr ?attr-val]]
+                                    [?moment ?attr ?attr-val]
+                                    :in $ ?epoch]
                                   (d/db timeline) epoch)
               entities       (d/q '[:find ?eid ?attr ?attr-val
                                     :in $ ?epoch :where
@@ -109,11 +107,7 @@
                                     [?eff-id ?attr ?attr-val]]
                                   (d/db timeline) epoch)
               transient-time (-> moment (into entities) (into effects))]
-          (d/q '[:find ?eid ?attr ?attr-val
-                 :where
-                 [?eid ?attr ?attr-val]
-                 [?eid :actor.attr/hp ?attr-val]]
-               transient-time))
+          transient-time)
         (finally (d/close timeline))))
 
   (#_:get-specific-moment
@@ -123,9 +117,7 @@
              (sp/setval [(entity :char/hilda) :actor.attr/effects sp/AFTER-ELEM] "new effect"))
         (finally (d/close timeline))))
 
-  (let [timeline (d/get-conn (datasource) timeline-schema)]
-    (try (t/engrave! timeline topaz/world topaz/history)
-         (finally (d/close timeline))))
+
 
   (let [timeline (d/get-conn (datasource) timeline-schema)]
     (try (t/q-moment (d/get-conn (datasource) timeline-schema) 2)
@@ -136,6 +128,33 @@
          (finally (d/close timeline))))
 
   (add-tap #(def last-tap %))
+  
+  (#_:query-any
+   let [timeline (d/get-conn (datasource) timeline-schema)
+        activation-compl [['?s.current-moment :moment.attr/epoch 0]
+                          :in '$ '?s.who-acts '?s.timing]
+        query-stmt (apply conj '[:find [?affected-id ?source-id]
+                                 :where
+                                 [(= ?s.timing :timing/before-action)]
+                                 [(= ?s.who-acts ?actor-name)]
+                                 [?s.current-moment :moment.attr/entities ?affected-id]
+                                 [?affected-id :actor.attr/name ?actor-name]
+                                 [?affected-id :actor.attr/effects ?eff-id]
+                                 [?eff-id :effect.attr/effect-name :debuff/poison]
+                                 [?eff-id :effect.attr/source ?source-id]]
+                          activation-compl)]
+   (try (d/q query-stmt
+             (d/db timeline) :char/aluxes :timing/before-action)
+        (finally (d/close timeline))))
+
+  (let [timeline (d/get-conn (datasource) timeline-schema)]
+    (try (t/engrave! timeline topaz/world topaz/history)
+         (finally (d/close timeline))))
+
+  (#_:query-all 
+   let [timeline (d/get-conn (datasource) timeline-schema)]
+   (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
+        (finally (d/close timeline))))
 
   (fs/delete-tree "tmp/rpg")
   (fs/delete-tree "tmp/random")

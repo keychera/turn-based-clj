@@ -33,10 +33,12 @@
 (def debuff-poison
   #:rule
    {:rule-name  :debuff/poison
-    :timing     :timing/before-action
     :activation '[:find [?affected-id ?source-id]
                   :where
-                  [?current-moment :moment.attr/entities ?affected-id]
+                  [(= ?s.timing :timing/before-action)]
+                  [(= ?s.who-acts ?actor-name)]
+                  [?s.current-moment :moment.attr/entities ?affected-id]
+                  [?affected-id :actor.attr/name ?actor-name]
                   [?affected-id :actor.attr/effects ?eff-id]
                   [?eff-id :effect.attr/effect-name :debuff/poison]
                   [?eff-id :effect.attr/source ?source-id]]
