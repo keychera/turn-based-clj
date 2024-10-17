@@ -2,58 +2,56 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [common :refer [htmx? query->map]]
-            [engine.timeline :refer [reduce-timeline]]
-            [engine.triplestore :refer [get-attr get-attr-multi get-entity]]
+            [engine2.try-datalevin :refer [with-datasource]]
             [hiccup2.core :refer [html]]
-            [model.hilda :refer [battle-data initial-moment]]
             [pod.huahaiy.datalevin :as d]
-            [selmer.parser :refer [render-file]]))
+            [selmer.parser :refer [render-file]]
+            [engine2.timeline :as t]))
 
 (defn timeline-html
   ([turn#] (timeline-html turn# 0))
-  ([turn# moment#]
-   (let [timeline (reduce-timeline 'model.hilda initial-moment battle-data turn#)
-         timeline-per-turn (->> timeline (group-by #(get-attr % :info/timeline :timeline/turn)))
-         curr-moments (get timeline-per-turn turn#)
-         ;; TODO performance issue on turns > 30
-         prev-turns (->> (dissoc timeline-per-turn turn#) (map (fn [[k v]] [k v])) (sort-by first >))
-         last-moment? (= (inc moment#) (count curr-moments))
-         last-turn? (get-attr (first curr-moments) :info/timeline :timeline/last-turn?)
-         [_ prev-moments] (last prev-turns)]
-     (str (html [:div {:id "timeline" :hx-push-url "true" :hx-target "#timeline" :hx-swap "outerHTML"}
-                 (when-not (and last-turn? last-moment?)
-                   [:div {:hx-get (if last-moment?
-                                    (str "/timeline/" (inc turn#) "?moment=0")
-                                    (str "/timeline/" turn# "?moment=" (inc moment#)))
+  ([turn# _moment#]
+   (let [moment-ids        (with-datasource
+                             (fn [timeline]
+                               (d/q '[:find ?moment ?epoch
+                                      :in $ ?last-turn :where
+                                      [?moment :moment.attr/epoch ?epoch]
+                                      [(<= ?epoch ?last-turn)]
+                                      :order-by [?epoch :desc]
+                                      :limit 10]
+                                    (d/db timeline) turn#)))
+         last-turn?        (= turn# (with-datasource (fn [timeline] (t/q-last-epoch timeline))))
+         [current & prevs] moment-ids
+         current-moment    (with-datasource (fn [timeline] (d/pull (d/db timeline) '[*] (first current))))
+         prev-moments      (with-datasource
+                             (fn [timeline]
+                               (->> prevs
+                                    (mapv (fn [[id _]]
+                                            (d/pull (d/db timeline)
+                                                    '[:moment.attr/epoch :moment.attr/desc :moment.attr/entities] id))))))]
+     (str (html [:div {:id          "timeline"
+                       :hx-push-url "true"
+                       :hx-target   "#timeline"
+                       :hx-swap     "outerHTML"}
+                 (when-not last-turn?
+                   [:div {:hx-get     (str "/timeline/" (inc turn#))
                           :hx-trigger "keyup[keyCode==40] from:body"}])
                  (when (> turn# 0)
-                   [:div {:hx-get (if (= moment# 0)
-                                    (str "/timeline/" (dec turn#) "?moment=" (dec (count prev-moments)))
-                                    (str "/timeline/" turn# "?moment=" (dec moment#)))
+                   [:div {:hx-get     (str "/timeline/" (dec turn#))
                           :hx-trigger "keyup[keyCode==38] from:body"}])
-                 [:p "Current turn " turn#]
-                 (let [viewed-moments (take (inc moment#) curr-moments)
-                       last-moment (last viewed-moments)
-                       entities (->> (get-attr-multi last-moment :info/timeline :timeline/actors)
-                                     (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                       effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
+                 [:p "Current moment " turn#]
+                 (let [entities (:moment.attr/entities current-moment)
+                       desc     (:moment.attr/desc current-moment)]
                    [:div
-                    [:p (str "Turn #" (or turn# 0))]
-                    [:p (str entities)]
-                    [:p (str effects)]
-                    [:ol (->> viewed-moments
-                              (map (fn [moment] [:li  [:p [:b (str (get-entity moment :info/moment))]]])))]])
-                 (->> prev-turns
-                      (map (fn [[turn# moments]]
-                             (let [last-moment (last moments)
-                                   entities (->> (get-attr-multi last-moment :info/timeline :timeline/actors)
-                                                 (mapv (fn [actor] [actor (get-entity last-moment actor)])))
-                                   effects (d/q '[:find ?eid ?attr ?val :where [_ :attr/effects ?eid] [?eid ?attr ?val]] last-moment)]
-                               [:div
-                                [:p (str "Turn #" (or turn# 0))]
-                                [:p (str entities)]
-                                [:p (str effects)]
-                                [:ol (->> moments (map (fn [moment] [:li  [:p [:b (str (get-entity moment :info/moment))]]])))]]))))])))))
+                    [:p (str "Moment #" (or turn# 0))]
+                    [:p [:strong desc]]
+                    [:p (str entities)]])
+                 (->> prev-moments
+                      (map (fn [{:moment.attr/keys [epoch desc entities]}]
+                             [:div
+                              [:p (str "Moment #" epoch)]
+                              [:p [:strong desc]]
+                              [:p (str entities)]])))])))))
 
 (defn battle-html [moment#]
   (render-file "battle.html" {:timeline-html (timeline-html moment#)}))
@@ -93,5 +91,8 @@
         (stop-server-fn) (stop-watcher-fn))))
 
   (router {:request-method :get :uri "/timeline/1"})
+
+  (with-datasource
+    (fn [timeline] (d/pull (d/db timeline) '[*] 27)))
 
   (stop-all-fn))

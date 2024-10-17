@@ -15,11 +15,12 @@
     (str "tmp/random/rpg-" @last-rand)
     "tmp/rpg"))
 
-(defn deal-with [it]
-  (str it " dealt!"))
+(defn with-datasource [data-fn]
+  (let [timeline (d/get-conn (datasource) timeline-schema)]
+    (try (data-fn timeline)
+         (finally (d/close timeline)))))
 
 (comment
-  deal-with
   (swap! random-db? not)
 
   @random-db?
