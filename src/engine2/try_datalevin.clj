@@ -158,4 +158,50 @@
 
   (fs/delete-tree "tmp/rpg")
   (fs/delete-tree "tmp/random")
+
+  (#_weird-behaviour
+   let [db-name "tmp/random/stuck"
+        _       (fs/delete-tree "tmp/random/stuck")
+        schema  {:entities {:db/cardinality :db.cardinality/many
+                            :db/valueType   :db.type/ref
+                            :db/isComponent true}}
+        conn    (d/get-conn db-name schema)
+        rules   '[[(rich? ?e ?rich)
+                   [?e :entities ?a] [?a :name ?rich] [?a :money 100]]]]
+    (try (d/transact! conn [{:turn     0
+                             :entities [{:name  "Subaru" :money 100}
+                                        {:name  "Emilia" :money -100}]}
+                            {:turn     1
+                             :entities [{:name  "Subaru" :money -100}
+                                        {:name  "Emilia" :money 100}]}])
+         (d/q '[:find [?rich ?broke]
+                :in $ % ?turn
+                :where [?e :turn ?turn]
+                (rich? ?e ?rich)
+                #_#_#_[?e :entities ?a] [?a :name ?rich] [?a :money 100]
+                [?e :entities ?b] [?b :name ?broke] [?b :money -100]]
+              (d/db conn) rules 1)
+         (finally (d/close conn))))
+  
+    (#_will-hang
+     let [db-name "tmp/random/stuck"
+        schema {:entities {:db/cardinality :db.cardinality/many
+                           :db/valueType   :db.type/ref
+                           :db/isComponent true}}
+        conn   (d/get-conn db-name schema)]
+    (try (d/q '[:find ?a ?b ?c
+                :where 
+                [?a ?b ?c]
+                (or [(= ?c "Emilia")]
+                    [(= ?c "Beatrice")])] (d/db conn))
+         (finally (d/close conn))))
+
+  (let [db-name "tmp/random/stuck"
+        schema {:entities {:db/cardinality :db.cardinality/many
+                           :db/valueType   :db.type/ref
+                           :db/isComponent true}}
+        conn   (d/get-conn db-name schema)]
+    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db conn))
+         (finally (d/close conn))))
+
   :end)
