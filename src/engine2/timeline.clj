@@ -37,8 +37,8 @@
 
 (def Action
   #:action.attr
-   {:actor    {:db/valueType :db.type/keyword}
-    :act-expr {:db/valueType :db.type/string}})
+   {:action-name {:db/valueType :db.type/keyword}
+    :actor       {:db/valueType :db.type/keyword}})
 
 (def Effect
   #:effect.attr
@@ -128,27 +128,23 @@
         :engrave!/done))))
 
 (defn engrave-action!
-  [timeline moves {:action.attr/keys [actor act-expr] :as action}]
-  (let [[move move-attr] act-expr
-        move-attr        (-> move-attr
-                             (assoc :move.attr/actor actor)
-                             (assoc :move.attr/move-name move))
-        alter            (get moves move)
+  [timeline moves {:action.attr/keys [action-name] :as action-attr}]
+  (let [alter            (get moves action-name)
         moment           (->> (q-last-moment timeline)
-                              (sp/setval    [:moment.attr/facts] [move-attr (update action :action.attr/act-expr str)]))
-        new-moment       (->> (alter moment move-attr)
+                              (sp/setval    [:moment.attr/facts] [action-attr]))
+        new-moment       (->> (alter moment action-attr)
                               (sp/transform [:moment.attr/epoch] inc))]
 
     (d/transact! timeline [(make-new-entity new-moment)])))
 
 (defn engrave! [timeline world history]
-  (let [{:world/keys [moves rules initial]} world
-        moves (-> moves (update-vals eval))]
+  (let [{:world/keys [actions rules initial]} world
+        actions (-> actions (update-vals eval))]
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
       (let [actor (:action.attr/actor action)]
         (engrave-rules! timeline rules actor :timing/before-action)
-        (engrave-action! timeline moves action)
+        (engrave-action! timeline actions action)
         (engrave-rules! timeline rules actor :timing/after-action)
         (if (empty? remaining-actions)
           ["last-moment" (q-last-moment timeline)]

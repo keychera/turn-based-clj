@@ -2,7 +2,7 @@
   (:require [com.rpl.specter :as sp]
             [engine2.timeline :refer [entity entity-id on-effect]]))
 
-(defn basic-attack [moment {:move.attr/keys [actor target]}]
+(defn basic-attack [moment {:action.attr/keys [actor target]}]
   (let [damage 50]
     (->> moment
          (sp/transform [(entity target)]
@@ -10,7 +10,7 @@
          (sp/transform [:moment.attr/facts]
                        #(conj % #:fact{:desc (str actor " attacks " target " for " damage " damage!")})))))
 
-(defn fireball [moment {:move.attr/keys [actor target]}]
+(defn fireball [moment {:action.attr/keys [actor target]}]
   (let [mp-cost 15 damage 50]
     (->> moment
          (sp/transform [(entity target)]
@@ -20,7 +20,7 @@
                        #(conj % #:fact{:desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
 
 (defn poison
-  [moment {:move.attr/keys [actor target duration] :or {duration 3}}]
+  [moment {:action.attr/keys [actor target duration] :or {duration 3}}]
   (let [mp-cost 30 effect-name :debuff/poison
         actor-entity (sp/select-one [(entity actor)] moment)]
     (->> moment
@@ -63,17 +63,17 @@
 
 (def world
   #:world
-   {:moves   {:move/basic-attack 'model.topaz/basic-attack
+   {:actions {:move/basic-attack 'model.topaz/basic-attack
               :move/fireball     'model.topaz/fireball
               :move/poison       'model.topaz/poison}
     :rules   [debuff-poison]
     :initial #:moment.attr
               {:epoch    0
                :entities [#:actor.attr
-                           {:db/id "hilda"
-                            :name  :char/hilda
-                            :hp    700
-                            :mp    400
+                           {:db/id   "hilda"
+                            :name    :char/hilda
+                            :hp      700
+                            :mp      400
                             :effects []}
                           #:actor.attr
                            {:name    :char/aluxes
@@ -85,15 +85,16 @@
                                         :duration    1}]}]}})
 
 (def history
-  [#:action.attr
-    {:actor    :char/hilda
-     :act-expr [:move/poison #:move.attr{:target :char/aluxes}]}
-   #:action.attr
-    {:actor    :char/aluxes
-     :act-expr [:move/basic-attack #:move.attr{:target :char/hilda}]}
-   #:action.attr
-    {:actor    :char/hilda
-     :act-expr [:move/fireball #:move.attr{:target :char/aluxes}]}])
+  [#:action.attr{:action-name :move/poison
+                 :actor       :char/hilda
+                 :target      :char/aluxes
+                 :duration    5}
+   #:action.attr{:action-name :move/basic-attack
+                 :actor       :char/aluxes
+                 :target      :char/hilda}
+   #:action.attr{:action-name :move/fireball
+                 :actor       :char/hilda
+                 :target      :char/aluxes}])
 
 (comment
 
