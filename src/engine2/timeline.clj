@@ -80,7 +80,7 @@
 
 ;; specter paths
 (defn entity [actor-name]
-  [:moment.attr/entities sp/ALL #(= actor-name (:actor.attr/name %))])
+  [:moment.attr/entities sp/ALL #(= actor-name (:actor.attr/actor-name %))])
 
 (defn entity-id [actor-id]
   [:moment.attr/entities sp/ALL #(= actor-id (:db/id %))])
@@ -99,7 +99,7 @@
     (let [[activated rule] unleashed-rule
           rule-fn          (:rule/rule-fn rule)
           new-moment       (rule-fn moment activated)]
-      (tap> new-moment)
+      (prn ["GO!" unleashed-rules])
       (if (some? remaining)
         (recur new-moment remaining)
         (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])))))
@@ -109,11 +109,15 @@
   (loop [current-epoch (q-last-epoch timeline)
          rules rules]
     (let [activation-compl [['?s.current-moment :moment.attr/epoch current-epoch]
-                            :in '$ '?s.who-acts '?s.timing]
+                            :in '$ '% '?s.who-acts '?s.timing
+                            #_#_:timeout 2000]
           grouped          (->> rules
-                                (mapv (fn [{:rule/keys [activation] :as rule}]
+                                (mapv (fn [{:rule/keys [rules-to-inject activation] :as rule}]
                                         (let [query-stmt (apply conj activation activation-compl)
-                                              activated  (d/q query-stmt (d/db timeline) actor timing)]
+                                              _ (prn query-stmt)
+                                              activated  (try (d/q query-stmt (d/db timeline) rules-to-inject actor timing)
+                                                              (catch Throwable e
+                                                                (prn ["error on query:" (Throwable->map e) rule])))]
                                           [activated rule])))
                                 (group-by (fn [[activated _]]
                                             (if (some? activated)
@@ -124,7 +128,7 @@
       (when (some? unleashed-rules)
         (unleash-rules! timeline unleashed-rules))
       (if (and (some? unleashed-rules) (some? dormant-rules))
-        (recur (inc current-epoch) dormant-rules)
+        (recur (inc current-epoch) (map second dormant-rules))
         :engrave!/done))))
 
 (defn engrave-action!

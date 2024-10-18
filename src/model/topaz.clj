@@ -41,7 +41,7 @@
                   [(= ?s.timing :timing/before-action)]
                   [(= ?s.who-acts ?actor-name)]
                   [?s.current-moment :moment.attr/entities ?affected-id]
-                  [?affected-id :actor.attr/name ?actor-name]
+                  [?affected-id :actor.attr/actor-name ?actor-name]
                   [?affected-id :actor.attr/effects ?eff-id]
                   [?eff-id :effect.attr/effect-name :debuff/poison]
                   [?eff-id :effect.attr/source ?source-id]]
@@ -55,34 +55,74 @@
                                        #(update % :actor.attr/hp - damage))
                          (sp/transform [(entity-id ?affected-id) (on-effect :debuff/poison) :effect.attr/duration] dec)
                          (sp/transform [:moment.attr/facts]
-                                       #(conj % #:fact{:desc        (str (:actor.attr/name affected-entity) " is poisoned! receives " damage " damage!")
+                                       #(conj % #:fact{:desc        (str (:actor.attr/actor-name affected-entity) " is poisoned! receives " damage " damage!")
                                                        :event       :event/poison-unleashed
                                                        :damage      damage
                                                        :affected-id (select-keys affected-entity [:db/id])
                                                        :source-id   (select-keys source-entity [:db/id])})))))})
+
+(def talent-clara
+  #:rule
+   {:rule-name       :talent/clara
+    :rules-to-inject '[[(talent-clara? ?s.current-moment ?id-with-talent ?name-with-talent)
+                        [?s.current-moment :moment.attr/entities ?id-with-talent]
+                        [?id-with-talent :actor.attr/effects ?eff-id]
+                        [?id-with-talent :actor.attr/actor-name ?name-with-talent]
+                        [?eff-id :effect.attr/effect-name :talent/clara]]
+
+                       [(targetted? ?s.current-moment ?attacker-id ?attacker-name ?targetted-name ?action-name)
+                        [?s.current-moment :moment.attr/facts ?fact-id]
+                        [?s.current-moment :moment.attr/entities ?attacker-id]
+                        [?attacker-id :actor.attr/actor-name ?attacker-name]
+                        [?fact-id :action.attr/actor ?attacker-name]
+                        [?fact-id :action.attr/action-name ?action-name]
+                        [?fact-id :action.attr/target ?targetted-name]]]
+    :activation      '[:find [?targetted-id ?attacker-id]
+                       :where
+                       [(= ?s.timing :timing/after-action)]
+                       (talent-clara? ?s.current-moment ?targetted-id ?targetted-name)
+                       (targetted? ?s.current-moment ?attacker-id ?attacker-name ?targetted-name ?action-name)
+                       [(= ?action-name :move/fireball)]
+                       [(= ?s.who-acts ?attacker-name)]]
+    :rule-fn         (fn [moment [?targetted-id ?attacker-id]]
+                       (let [targeted-entity (sp/select-one [(entity-id ?targetted-id)] moment)
+                             attacker-entity (sp/select-one [(entity-id ?attacker-id)] moment)
+                             attacker-hp     (:actor.attr/hp targeted-entity)
+                             _               (prn "countering..." targeted-entity attacker-entity)
+                             damage          (Math/floor (/ attacker-hp 10))]
+                         (->> moment
+                              (sp/transform [(entity-id attacker-entity)]
+                                            #(update % :actor.attr/hp - damage))
+                              (sp/transform [:moment.attr/facts]
+                                            #(conj % #:fact{:desc        (str (:actor.attr/actor-name targeted-entity) " countered " (:actor.attr/actor-name attacker-entity) "'s attack with " damage " damage!")
+                                                            :event       :event/clara-talent-unleashed
+                                                            :damage      damage
+                                                            :affected-id (select-keys targeted-entity [:db/id])
+                                                            :source-id   (select-keys attacker-entity [:db/id])})))))})
 
 (def world
   #:world
    {:actions {:move/basic-attack 'model.topaz/basic-attack
               :move/fireball     'model.topaz/fireball
               :move/poison       'model.topaz/poison}
-    :rules   [debuff-poison]
+    :rules   [debuff-poison talent-clara]
     :initial #:moment.attr
               {:epoch    0
                :entities [#:actor.attr
-                           {:db/id   "hilda"
-                            :name    :char/hilda
-                            :hp      700
-                            :mp      400
-                            :effects []}
+                           {:db/id      "hilda"
+                            :actor-name :char/hilda
+                            :hp         700
+                            :mp         400
+                            :effects    []}
                           #:actor.attr
-                           {:name    :char/aluxes
-                            :hp      1000
-                            :mp      45
-                            :effects [#:effect.attr
-                                       {:effect-name :debuff/poison
-                                        :source      "hilda"
-                                        :duration    1}]}]}})
+                           {:actor-name :char/aluxes
+                            :hp         1000
+                            :mp         45
+                            :effects    [#:effect.attr {:effect-name :talent/clara}
+                                         #:effect.attr
+                                          {:effect-name :debuff/poison
+                                           :source      "hilda"
+                                           :duration    1}]}]}})
 
 (def history
   [#:action.attr{:action-name :move/poison
