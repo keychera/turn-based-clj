@@ -17,8 +17,8 @@
    {:epoch    {:db/cardinality :db.cardinality/one}
     :desc     {:db/valueType :db.type/string}
     :timing   {:db/cardinality :db.cardinality/one
-               :db/valueType :db.type/keyword}
-    :events   {:db/cardinality :db.cardinality/many
+               :db/valueType   :db.type/keyword}
+    :facts    {:db/cardinality :db.cardinality/many
                :db/valueType   :db.type/ref
                :db/isComponent true}
     :entities {:db/cardinality :db.cardinality/many
@@ -94,18 +94,15 @@
 
 (defn unleash-rules! [timeline unleashed-rules]
   (loop [moment                       (-> (q-last-moment timeline)
-                                          (assoc :moment.attr/events []))
+                                          (assoc :moment.attr/facts []))
          [unleashed-rule & remaining] unleashed-rules]
     (let [[activated rule] unleashed-rule
           rule-fn          (:rule/rule-fn rule)
           new-moment       (rule-fn moment activated)]
-      (prn ["unleashing!!!" rule new-moment])
       (tap> new-moment)
       (if (some? remaining)
         (recur new-moment remaining)
-        (do (prn ["transacting!" (make-new-entity new-moment)])
-            (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])
-            (prn ["done transacting!"]))))))
+        (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])))))
 
 (defn engrave-rules!
   [timeline rules actor timing]
@@ -125,7 +122,6 @@
           unleashed-rules  (:engrave!/unleashed-rules grouped)
           dormant-rules    (:engrave!/dormant-rules grouped)]
       (when (some? unleashed-rules)
-        (prn ["unleashed!" unleashed-rules dormant-rules])
         (unleash-rules! timeline unleashed-rules))
       (if (and (some? unleashed-rules) (some? dormant-rules))
         (recur (inc current-epoch) dormant-rules)
@@ -138,12 +134,10 @@
                              (assoc :move.attr/actor actor)
                              (assoc :move.attr/move-name move))
         alter            (get moves move)
-        moment           (q-last-moment timeline)
-        _ (prn ["moment of " (:moment.attr/epoch moment)])
+        moment           (->> (q-last-moment timeline)
+                              (sp/setval    [:moment.attr/facts] [move-attr (update action :action.attr/act-expr str)]))
         new-moment       (->> (alter moment move-attr)
-                              (sp/transform [:moment.attr/epoch] inc)
-                              (sp/setval    [:moment.attr/events]
-                                            [(update action :action.attr/act-expr str)]))]
+                              (sp/transform [:moment.attr/epoch] inc))]
 
     (d/transact! timeline [(make-new-entity new-moment)])))
 
@@ -153,11 +147,8 @@
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
       (let [actor (:action.attr/actor action)]
-        (prn "before-action!")
         (engrave-rules! timeline rules actor :timing/before-action)
-        (prn "action!")
         (engrave-action! timeline moves action)
-        (prn "after-action!")
         (engrave-rules! timeline rules actor :timing/after-action)
         (if (empty? remaining-actions)
           ["last-moment" (q-last-moment timeline)]

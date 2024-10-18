@@ -5,30 +5,33 @@
 (defn basic-attack [moment {:move.attr/keys [actor target]}]
   (let [damage 50]
     (->> moment
-         (sp/setval    [:moment.attr/desc] (str actor " attacks " target " for " damage " damage!"))
          (sp/transform [(entity target)]
-                       #(update % :actor.attr/hp - damage)))))
+                       #(update % :actor.attr/hp - damage))
+         (sp/transform [:moment.attr/facts]
+                       #(conj % #:fact{:desc (str actor " attacks " target " for " damage " damage!")})))))
 
 (defn fireball [moment {:move.attr/keys [actor target]}]
   (let [mp-cost 15 damage 50]
     (->> moment
-         (sp/setval    [:moment.attr/desc] (str actor " cast fireball towards " target " for " damage " damage!"))
          (sp/transform [(entity target)]
                        (comp #(update % :actor.attr/mp - mp-cost)
-                             #(update % :actor.attr/hp - damage))))))
+                             #(update % :actor.attr/hp - damage)))
+         (sp/transform [:moment.attr/facts]
+                       #(conj % #:fact{:desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
 
 (defn poison
   [moment {:move.attr/keys [actor target duration] :or {duration 3}}]
   (let [mp-cost 30 effect-name :debuff/poison
         actor-entity (sp/select-one [(entity actor)] moment)]
     (->> moment
-         (sp/setval    [:moment.attr/desc] (str actor " poisons " target " ! " target " is now poisoned!"))
          (sp/transform [(entity actor)]
                        #(update % :actor.attr/mp - mp-cost))
          (sp/setval    [(entity target) (on-effect :debuff/poison)]
                        #:effect.attr{:effect-name effect-name
                                      :source (:db/id actor-entity)
-                                     :duration duration}))))
+                                     :duration duration})
+         (sp/transform [:moment.attr/facts]
+                       #(conj % #:fact{:desc (str actor " poisons " target " ! " target " is now poisoned!")})))))
 
 (def debuff-poison
   #:rule
@@ -50,13 +53,13 @@
                     (->> moment
                          (sp/transform [(entity-id ?affected-id)]
                                        #(update % :actor.attr/hp - damage))
-                         (sp/setval    [:moment.attr/desc] (str (:actor.attr/name affected-entity) " is poisoned! receives " damage " damage!"))
                          (sp/transform [(entity-id ?affected-id) (on-effect :debuff/poison) :effect.attr/duration] dec)
-                         (sp/transform [:moment.attr/events]
-                                       #(conj % #:event.attr{:event-name  :debuff/poison
-                                                             :damage      damage
-                                                             :affected-id (select-keys affected-entity [:db/id])
-                                                             :source-id   (select-keys source-entity [:db/id])})))))})
+                         (sp/transform [:moment.attr/facts]
+                                       #(conj % #:fact{:desc        (str (:actor.attr/name affected-entity) " is poisoned! receives " damage " damage!")
+                                                       :event       :event/poison-unleashed
+                                                       :damage      damage
+                                                       :affected-id (select-keys affected-entity [:db/id])
+                                                       :source-id   (select-keys source-entity [:db/id])})))))})
 
 (def world
   #:world

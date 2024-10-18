@@ -13,13 +13,13 @@
   - [x] multi effect
   - [ ] diff visuals leveraging triplestores
 - [ ] events to latch on and richer effect trigger
-- [ ] let effect be potentially infinite
+- [x] let effect be potentially infinite
 - [ ] follow up
-- [ ] improvized moments
+- [x] improvized moments - using the actual datalevin now
   - [ ] saving moments in timeline
   - [ ] categorizing/identifying moments
 - [ ] player stat and damage calculation
-- [ ] effect cauldron
+- [x] effect cauldron
 - [ ] player input
 - [ ] define what is shown to the player and what is kept being in the background
 - [ ] modular visuals
