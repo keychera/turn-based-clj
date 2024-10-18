@@ -6,7 +6,8 @@
             [hiccup2.core :refer [html]]
             [pod.huahaiy.datalevin :as d]
             [selmer.parser :refer [render-file]]
-            [engine2.timeline :as t]))
+            [engine2.timeline :as t]
+            [com.rpl.specter :as sp]))
 
 (defn timeline-html
   ([turn#] (timeline-html turn# 0))
@@ -28,7 +29,7 @@
                                (->> prevs
                                     (mapv (fn [[id _]]
                                             (d/pull (d/db timeline)
-                                                    '[:moment.attr/epoch :moment.attr/desc :moment.attr/entities] id))))))]
+                                                    '[:moment.attr/epoch :moment.attr/facts :moment.attr/entities] id))))))]
      (str (html [:div {:id          "timeline"
                        :hx-push-url "true"
                        :hx-target   "#timeline"
@@ -41,17 +42,18 @@
                           :hx-trigger "keyup[keyCode==38] from:body"}])
                  [:p "Current moment " turn#]
                  (let [entities (:moment.attr/entities current-moment)
-                       desc     (:moment.attr/desc current-moment)]
+                       desc     (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] current-moment)]
                    [:div
                     [:p (str "Moment #" (or turn# 0))]
                     [:p [:strong desc]]
                     [:p (str entities)]])
                  (->> prev-moments
-                      (map (fn [{:moment.attr/keys [epoch desc entities]}]
-                             [:div
-                              [:p (str "Moment #" epoch)]
-                              [:p [:strong desc]]
-                              [:p (str entities)]])))])))))
+                      (map (fn [{:moment.attr/keys [epoch entities facts]}]
+                             (let [desc (sp/select-one [sp/ALL :fact/desc some?] facts)]
+                               [:div
+                                [:p (str "Moment #" epoch)]
+                                [:p [:strong desc]]
+                                [:p (str entities)]]))))])))))
 
 (defn battle-html [moment#]
   (render-file "battle.html" {:timeline-html (timeline-html moment#)}))
