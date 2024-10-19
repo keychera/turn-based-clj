@@ -1,4 +1,5 @@
-(ns engine2.try-datalevin)
+(ns engine2.try-datalevin 
+  (:require [engine2.timeline :as t]))
 
 (require '[babashka.fs :as fs]
          '[engine2.timeline :as t :refer [timeline-schema entity]]
@@ -156,8 +157,7 @@
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
         (finally (d/close timeline))))
 
-  (fs/delete-tree "tmp/rpg")
-  (fs/delete-tree "tmp/random")
+  (fs/delete-tree "tmp/rpg") 
 
   (#_weird-behaviour
    let [db-name "tmp/random/stuck"
@@ -200,11 +200,15 @@
                    [(= ?c "Beatrice")])] (d/db conn))
         (finally (d/close conn))))
 
-  (let [db-name "tmp/random/stuck"
+  (let [db-name "tmp/test/rand-2.983988458237972"
         schema  {:entities {:db/cardinality :db.cardinality/many
                             :db/valueType   :db.type/ref
                             :db/isComponent true}}
         conn    (d/get-conn db-name schema)]
-    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db conn))
+    (try #_(d/q '[:find ?c .
+                :where [?a :moment.attr/epoch ?c]] (d/db conn))
+         (t/q-moment conn 1)
          (finally (d/close conn))))
+  
+  (fs/delete-tree "tmp/test")
   )

@@ -1,17 +1,26 @@
-(ns util.test-data)
+(ns util.test-data
+  (:require [engine2.timeline :refer [timeline-schema]]
+            [pod.huahaiy.datalevin :as d]))
 
 (def default-initial-moment
-  [[:info/timeline :timeline/turn 0]
-   [:info/timeline :timeline/actors :actor/hilda]
-   [:info/timeline :timeline/actors :actor/aluxes]
-   [:actor/hilda :attr/hp 560]
-   [:actor/hilda :attr/mp 200]
-   [:actor/aluxes :attr/hp 800]
-   [:actor/aluxes :attr/mp 10]])
+  #:moment.attr
+   {:epoch    0
+    :entities [#:actor.attr
+                {:db/id      "hilda"
+                 :actor-name :char/hilda
+                 :hp         560
+                 :mp         200
+                 :effects    []}
+               #:actor.attr
+                {:actor-name :char/aluxes
+                 :hp         800
+                 :mp         10
+                 :effects    []}]})
 
-(defn build-history [players active-effects history]
-  #:battle-data
-   {:num-actions-per-turn (count players)
-    :actors players
-    :active-effects active-effects
-    :history history})
+(defn with-timeline [source do-fn]
+  (let [timeline (d/get-conn source timeline-schema)]
+    (try (do-fn timeline)
+         (finally (d/close timeline)))))
+
+(defn with-fresh-timeline [do-fn]
+  (with-timeline (str "tmp/test/rand-" (rand 42)) do-fn))

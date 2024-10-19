@@ -1,32 +1,35 @@
 (ns engine.timeline-test
   (:require [clojure.test :refer [deftest is]]
-            [engine.timeline :refer [reduce-timeline]]
-            [model.hilda :as hilda]
-            [util.test-data :refer [build-history default-initial-moment]]))
+            [engine2.timeline :as t]
+            [model.topaz :as topaz]
+            [pod.huahaiy.datalevin :as d]
+            [util.test-data :refer [default-initial-moment with-fresh-timeline]]))
 
-(def timeline-test-data
-  (build-history
-   [:actor/aluxes :actor/hilda]
-   [hilda/poison-effect]
-   [#:moment{:whose  :actor/hilda
-             :action '(-> :actor/hilda (poison :actor/aluxes #:effect-data{:duration 1}))}
-    #:moment{:whose  :actor/aluxes
-             :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+(def poison-test-world
+  #:world
+   {:actions {:move/basic-attack 'model.topaz/basic-attack
+              :move/fireball     'model.topaz/fireball
+              :move/poison       'model.topaz/poison}
+    :rules   [topaz/debuff-poison]
+    :initial default-initial-moment})
 
-    #:moment{:whose  :actor/hilda
-             :action '(-> :actor/hilda (magic-up))}
-    #:moment{:whose  :actor/aluxes
-             :action '(-> :actor/aluxes (basic-attack :actor/hilda))}
+(def history
+  [#:action.attr{:action-name :move/poison
+                 :actor       :char/hilda
+                 :target      :char/aluxes
+                 :duration    1}
+   #:action.attr{:action-name :move/basic-attack
+                 :actor       :char/aluxes
+                 :target      :char/hilda}
+   #:action.attr{:action-name :move/fireball
+                 :actor       :char/hilda
+                 :target      :char/aluxes}])
 
-    #:moment{:whose  :actor/hilda
-             :action '(-> :actor/hilda (magic-up))}
-    #:moment{:whose  :actor/aluxes
-             :action '(-> :actor/aluxes (basic-attack :actor/hilda))}]))
-
-(deftest timeline-limit-0-test
-  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment timeline-test-data 0)]
-    (is (= 1 (count actual-timeline)))))
-
-(deftest timeline-limit-1-test
-  (let [actual-timeline (reduce-timeline 'model.hilda default-initial-moment timeline-test-data 1)]
-    (is (= 4 (count actual-timeline)))))
+(deftest timeline-test
+  (with-fresh-timeline
+    (fn [timeline]
+      (t/engrave! timeline poison-test-world history)
+      (let [epoch-count (d/q '[:find (count ?epoch) .
+                                   :where [_ :moment.attr/epoch ?epoch]] 
+                                 (d/db timeline))]
+        (is (= 5 epoch-count))))))
