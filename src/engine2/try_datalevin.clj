@@ -77,9 +77,9 @@
    (try #_(d/transact! timeline [[:db/add "poison" :rule/name :debuff/charm]
                                  [:db/add "poison" :rule/activation '[:find]]
                                  [:db/add "poison" :rule/unleash-fn 'engine2.try-datalevin/deal-with]])
-    (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
-          unleash                                   (eval rule-fn)]
-      [rule-name activation rule-fn (unleash 1)])
+        (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
+              unleash                                     (eval rule-fn)]
+          [rule-name activation rule-fn (unleash 1)])
         (finally (d/close timeline))))
 
 
@@ -128,21 +128,21 @@
          (finally (d/close timeline))))
 
   (add-tap #(def last-tap %))
-  
+
   (#_:query-any
-   let [timeline (d/get-conn (datasource) timeline-schema)
+   let [timeline         (d/get-conn (datasource) timeline-schema)
         activation-compl [['?s.current-moment :moment.attr/epoch 0]
                           :in '$ '?s.who-acts '?s.timing]
-        query-stmt (apply conj '[:find [?affected-id ?source-id]
-                                 :where
-                                 [(= ?s.timing :timing/before-action)]
-                                 [(= ?s.who-acts ?actor-name)]
-                                 [?s.current-moment :moment.attr/entities ?affected-id]
-                                 [?affected-id :actor.attr/name ?actor-name]
-                                 [?affected-id :actor.attr/effects ?eff-id]
-                                 [?eff-id :effect.attr/effect-name :debuff/poison]
-                                 [?eff-id :effect.attr/source ?source-id]]
-                          activation-compl)]
+        query-stmt       (apply conj '[:find [?affected-id ?source-id]
+                                       :where
+                                       [(= ?s.timing :timing/before-action)]
+                                       [(= ?s.who-acts ?actor-name)]
+                                       [?s.current-moment :moment.attr/entities ?affected-id]
+                                       [?affected-id :actor.attr/name ?actor-name]
+                                       [?affected-id :actor.attr/effects ?eff-id]
+                                       [?eff-id :effect.attr/effect-name :debuff/poison]
+                                       [?eff-id :effect.attr/source ?source-id]]
+                                activation-compl)]
    (try (d/q query-stmt
              (d/db timeline) :char/aluxes :timing/before-action)
         (finally (d/close timeline))))
@@ -151,7 +151,7 @@
     (try (t/engrave! timeline topaz/world topaz/history)
          (finally (d/close timeline))))
 
-  (#_:query-all 
+  (#_:query-all
    let [timeline (d/get-conn (datasource) timeline-schema)]
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
         (finally (d/close timeline))))
@@ -168,40 +168,43 @@
         conn    (d/get-conn db-name schema)
         rules   '[[(rich? ?e ?rich)
                    [?e :entities ?a] [?a :name ?rich] [?a :money 100]]]]
-    (try (d/transact! conn [{:turn     0
-                             :entities [{:name  "Subaru" :money 100}
-                                        {:name  "Emilia" :money -100}]}
-                            {:turn     1
-                             :entities [{:name  "Subaru" :money -100}
-                                        {:name  "Emilia" :money 100}]}])
-         (d/q '[:find [?rich ?broke]
-                :in $ % ?turn
-                :where [?e :turn ?turn]
-                (rich? ?e ?rich)
-                #_#_#_[?e :entities ?a] [?a :name ?rich] [?a :money 100]
-                [?e :entities ?b] [?b :name ?broke] [?b :money -100]]
-              (d/db conn) rules 1)
-         (finally (d/close conn))))
-  
-    (#_will-hang
-     let [db-name "tmp/random/stuck"
-        schema {:entities {:db/cardinality :db.cardinality/many
-                           :db/valueType   :db.type/ref
-                           :db/isComponent true}}
-        conn   (d/get-conn db-name schema)]
-    (try (d/q '[:find ?a ?b ?c
-                :where 
-                [?a ?b ?c]
-                (or [(= ?c "Emilia")]
-                    [(= ?c "Beatrice")])] (d/db conn))
-         (finally (d/close conn))))
+   (try (d/transact! conn [{:turn     0
+                            :entities [{:name  "Subaru"
+                                        :money 100}
+                                       {:name  "Emilia"
+                                        :money -100}]}
+                           {:turn     1
+                            :entities [{:name  "Subaru"
+                                        :money -100}
+                                       {:name  "Emilia"
+                                        :money 100}]}])
+        (d/q '[:find [?rich ?broke]
+               :in $ % ?turn
+               :where [?e :turn ?turn]
+               (rich? ?e ?rich)
+               #_#_#_[?e :entities ?a] [?a :name ?rich] [?a :money 100]
+               [?e :entities ?b] [?b :name ?broke] [?b :money -100]]
+             (d/db conn) rules 1)
+        (finally (d/close conn))))
+
+  (#_will-hang
+   let [db-name "tmp/random/stuck"
+        schema  {:entities {:db/cardinality :db.cardinality/many
+                            :db/valueType   :db.type/ref
+                            :db/isComponent true}}
+        conn    (d/get-conn db-name schema)]
+   (try (d/q '[:find ?a ?b ?c
+               :where
+               [?a ?b ?c]
+               (or [(= ?c "Emilia")]
+                   [(= ?c "Beatrice")])] (d/db conn))
+        (finally (d/close conn))))
 
   (let [db-name "tmp/random/stuck"
-        schema {:entities {:db/cardinality :db.cardinality/many
-                           :db/valueType   :db.type/ref
-                           :db/isComponent true}}
-        conn   (d/get-conn db-name schema)]
+        schema  {:entities {:db/cardinality :db.cardinality/many
+                            :db/valueType   :db.type/ref
+                            :db/isComponent true}}
+        conn    (d/get-conn db-name schema)]
     (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db conn))
          (finally (d/close conn))))
-
-  :end)
+  )

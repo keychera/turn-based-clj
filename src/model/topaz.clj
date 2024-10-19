@@ -69,7 +69,6 @@
                         [?id-with-talent :actor.attr/effects ?eff-id]
                         [?id-with-talent :actor.attr/actor-name ?name-with-talent]
                         [?eff-id :effect.attr/effect-name :talent/clara]]
-
                        [(targetted? ?s.current-moment ?attacker-id ?attacker-name ?targetted-name ?action-name)
                         [?s.current-moment :moment.attr/facts ?fact-id]
                         [?s.current-moment :moment.attr/entities ?attacker-id]
@@ -91,7 +90,7 @@
                              _               (prn "countering..." targeted-entity attacker-entity)
                              damage          (Math/floor (/ attacker-hp 10))]
                          (->> moment
-                              (sp/transform [(entity-id attacker-entity)]
+                              (sp/transform [(entity-id ?attacker-id)]
                                             #(update % :actor.attr/hp - damage))
                               (sp/transform [:moment.attr/facts]
                                             #(conj % #:fact{:desc        (str (:actor.attr/actor-name targeted-entity) " countered " (:actor.attr/actor-name attacker-entity) "'s attack with " damage " damage!")
