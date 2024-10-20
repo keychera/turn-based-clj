@@ -45,7 +45,7 @@
    {:effect-name {:db/cardinality :db.cardinality/one
                   :db/valueType   :db.type/keyword}
     :duration    {:db/cardinality :db.cardinality/one}
-    :source-ref  {:db/valueType :db.type/ref}})
+    :source-name  {:db/valueType :db.type/keyword}})
 
 (def timeline-schema (merge Rule Moment Action Actor Effect))
 
@@ -93,7 +93,7 @@
   (sp/comp-paths
    :actor.attr/effects sp/ALL
    #(and (= effect-name (:effect.attr/effect-name %))
-         (= source-name (:effect.attr/source-ref %)))))
+         (= source-name (:effect.attr/source-name %)))))
 
 (defn on-or-add-effect [effect-name source-name]
   (sp/comp-paths

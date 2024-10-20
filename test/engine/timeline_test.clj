@@ -4,7 +4,7 @@
             [engine2.timeline :as t]
             [model.topaz :as topaz]
             [pod.huahaiy.datalevin :as d]
-            [util.test-data :refer [default-initial-moment with-fresh-timeline]]))
+            [util.test-data :refer [default-initial-moment with-fresh-timeline with-timeline]]))
 
 (def poison-test-world
   #:world
@@ -17,14 +17,14 @@
 (def history
   [#:action.attr{:action-name :move/poison
                  :actor-name  :char/hilda
-                 :target      :char/aluxes
+                 :target-name :char/aluxes
                  :duration    1}
    #:action.attr{:action-name :move/basic-attack
                  :actor-name  :char/aluxes
-                 :target      :char/hilda}
+                 :target-name :char/hilda}
    #:action.attr{:action-name :move/fireball
                  :actor-name  :char/hilda
-                 :target      :char/aluxes}])
+                 :target-name :char/aluxes}])
 
 (deftest timeline-test
   (with-fresh-timeline
@@ -40,26 +40,26 @@
 (def new-effect
   #:effect.attr
    {:effect-name :debuff/poison
-    :source-ref :char/hilda
+    :source-name :char/hilda
     :duration 3})
 
 (deftest on-effect-test
   (testing "that the correct existing effect is changed"
     (is (= (->> {:actor.attr/effects [#:effect.attr
                                        {:effect-name :debuff/poison
-                                        :source-ref :char/hilda
+                                        :source-name :char/hilda
                                         :duration 1}]}
                 (sp/setval [(t/on-effect :debuff/poison :char/hilda)] new-effect))
            {:actor.attr/effects [new-effect]})))
   (testing "that it is no-op if there is no matching effect"
     (is (= (->> {:actor.attr/effects [#:effect.attr
                                        {:effect-name :debuff/poison
-                                        :source-ref :char/aluxes
+                                        :source-name :char/aluxes
                                         :duration 1}]}
                 (sp/setval [(t/on-effect :debuff/poison :char/hilda)] new-effect))
            {:actor.attr/effects [#:effect.attr
                                   {:effect-name :debuff/poison
-                                   :source-ref :char/aluxes
+                                   :source-name :char/aluxes
                                    :duration 1}]})))
   (testing "that it is no-op if there is no effect"
     (is (= (->> {:actor.attr/effects []}
@@ -88,15 +88,16 @@
   (testing "that it update existing effect if there are identical effects"
     (is (= (->> {:actor.attr/effects [#:effect.attr
                                        {:effect-name :debuff/poison
-                                        :source-ref :char/hilda
+                                        :source-name :char/hilda
                                         :duration 99}]}
                 (sp/setval [(t/on-or-add-effect :debuff/poison :char/hilda)] new-effect))
            {:actor.attr/effects [new-effect]}))))
 
 (comment
-  (with-fresh-timeline
+  (with-timeline "tmp/try"
     (fn [timeline]
-      (t/engrave! timeline poison-test-world history)
-      (d/q '[:find (count ?epoch) .
-             :where [_ :moment.attr/epoch ?epoch]]
-           (d/db timeline)))))
+      #_(t/engrave! timeline poison-test-world history)
+      #_(d/q '[:find (count ?epoch) .
+               :where [_ :moment.attr/epoch ?epoch]]
+             (d/db timeline))
+      (t/q-moment timeline 1))))
