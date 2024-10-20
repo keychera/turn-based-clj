@@ -76,9 +76,9 @@
    (try #_(d/transact! timeline [[:db/add "poison" :rule/name :debuff/charm]
                                  [:db/add "poison" :rule/activation '[:find]]
                                  [:db/add "poison" :rule/unleash-fn 'engine2.try-datalevin/deal-with]])
-        (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
-              unleash                                     (eval rule-fn)]
-          [rule-name activation rule-fn (unleash 1)])
+    (let [{:rule/keys [rule-name activation rule-fn]} (d/touch (d/entity (d/db timeline) [:rule/rule-name :debuff/poison]))
+          unleash                                     (eval rule-fn)]
+      [rule-name activation rule-fn (unleash 1)])
         (finally (d/close timeline))))
 
 
@@ -155,7 +155,7 @@
    (try (d/q '[:find ?a ?b ?c :where [?a ?b ?c]] (d/db timeline))
         (finally (d/close timeline))))
 
-  (fs/delete-tree "tmp/rpg") 
+  (fs/delete-tree "tmp/rpg")
 
   (#_weird-behaviour
    let [db-name "tmp/random/stuck"
@@ -198,15 +198,17 @@
                    [(= ?c "Beatrice")])] (d/db conn))
         (finally (d/close conn))))
 
-  (let [db-name "tmp/test/rand-2.983988458237972"
+  (let [db-name "tmp/test/rand-8.19731560378118"
         schema  {:entities {:db/cardinality :db.cardinality/many
                             :db/valueType   :db.type/ref
                             :db/isComponent true}}
-        conn    (d/get-conn db-name schema)]
+        timeline    (d/get-conn db-name schema)]
     (try #_(d/q '[:find ?c .
-                :where [?a :moment.attr/epoch ?c]] (d/db conn))
-         (t/q-moment conn 1)
-         (finally (d/close conn))))
-  
-  (fs/delete-tree "tmp/test")
-  )
+                  :where [?a :moment.attr/epoch ?c]] (d/db conn))
+     #_(t/q-moment conn 1)
+     (d/q '[:find (count ?epoch) . :where [_ :moment.attr/epoch ?epoch]]
+          (d/db timeline))
+         (t/q-last-epoch timeline)
+         (finally (d/close timeline))))
+
+  (fs/delete-tree "tmp/test"))

@@ -19,7 +19,7 @@
 
 (defn with-timeline [source do-fn]
   (let [timeline (d/get-conn source timeline-schema)]
-    (try (do-fn timeline)
+    (try (do-fn timeline) source
          (finally (d/close timeline)))))
 
 (defn with-fresh-timeline [do-fn]
