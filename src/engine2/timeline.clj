@@ -80,19 +80,28 @@
 
 ;; specter paths
 (defn entity [actor-name]
-  [:moment.attr/entities sp/ALL #(= actor-name (:actor.attr/actor-name %))])
+  (sp/comp-paths :moment.attr/entities sp/ALL #(= actor-name (:actor.attr/actor-name %))))
 
 (defn entity-id [actor-id]
-  [:moment.attr/entities sp/ALL #(= actor-id (:db/id %))])
+  (sp/comp-paths :moment.attr/entities sp/ALL #(= actor-id (:db/id %))))
+
+(def add-effect
+  (sp/comp-paths
+   :actor.attr/effects sp/NIL->VECTOR sp/AFTER-ELEM))
 
 (defn on-effect [effect-name source-name]
-  [:actor.attr/effects  sp/ALL
+  (sp/comp-paths
+   :actor.attr/effects sp/ALL
    #(and (= effect-name (:effect.attr/effect-name %))
-         (= source-name (:effect.attr/source-ref %)))])
+         (= source-name (:effect.attr/source-ref %)))))
+
+(defn on-or-add-effect [effect-name source-name]
+  (sp/comp-paths
+   (sp/if-path
+    (on-effect effect-name source-name)
+    (on-effect effect-name source-name) add-effect)))
 
 ;; timeline core
-
-
 (defn unleash-rules! [timeline unleashed-rules]
   (loop [moment                       (-> (q-last-moment timeline)
                                           (assoc :moment.attr/facts []))
@@ -146,12 +155,9 @@
         actions (-> actions (update-vals eval))]
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
-      (let [actor-name (:action.attr/actor-name action)]
-        (prn "before-action!")
+      (let [actor-name (:action.attr/actor-name action)] 
         (engrave-rules! timeline rules actor-name :timing/before-action)
-        (prn "engraving!")
         (engrave-action! timeline actions action)
-        (prn "after-action!")
         (engrave-rules! timeline rules actor-name :timing/after-action)
         (if (empty? remaining-actions)
           ["last-moment" (q-last-moment timeline)]

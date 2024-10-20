@@ -1,6 +1,7 @@
 (ns model.topaz
   (:require [com.rpl.specter :as sp]
-            [engine2.timeline :refer [entity entity-id on-effect]]))
+            [engine2.timeline :refer [entity entity-id on-effect
+                                      on-or-add-effect]]))
 
 (defn basic-attack [moment {:action.attr/keys [actor-name target]}]
   (let [damage 50]
@@ -25,7 +26,7 @@
     (->> moment
          (sp/transform [(entity actor-name)]
                        #(update % :actor.attr/mp - mp-cost))
-         (sp/setval    [(entity target-name) (on-effect :debuff/poison actor-name)]
+         (sp/setval    [(entity target-name) (on-or-add-effect :debuff/poison actor-name)]
                        #:effect.attr{:effect-name effect-name
                                      :source-ref actor-name
                                      :duration duration})
