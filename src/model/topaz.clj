@@ -2,41 +2,40 @@
   (:require [com.rpl.specter :as sp]
             [engine2.timeline :refer [entity entity-id on-effect]]))
 
-(defn basic-attack [moment {:action.attr/keys [actor target]}]
+(defn basic-attack [moment {:action.attr/keys [actor-name target]}]
   (let [damage 50]
     (->> moment
          (sp/transform [(entity target)]
                        #(update % :actor.attr/hp - damage))
          (sp/transform [:moment.attr/facts]
-                       #(conj % #:fact{:desc (str actor " attacks " target " for " damage " damage!")})))))
+                       #(conj % #:fact{:desc (str actor-name " attacks " target " for " damage " damage!")})))))
 
-(defn fireball [moment {:action.attr/keys [actor target]}]
+(defn fireball [moment {:action.attr/keys [actor-name target]}]
   (let [mp-cost 15 damage 50]
     (->> moment
          (sp/transform [(entity target)]
                        (comp #(update % :actor.attr/mp - mp-cost)
                              #(update % :actor.attr/hp - damage)))
          (sp/transform [:moment.attr/facts]
-                       #(conj % #:fact{:desc (str actor " cast fireball towards " target " for " damage " damage!")})))))
+                       #(conj % #:fact{:desc (str actor-name " cast fireball towards " target " for " damage " damage!")})))))
 
 (defn poison
-  [moment {:action.attr/keys [actor target duration] :or {duration 3}}]
-  (let [mp-cost 30 effect-name :debuff/poison
-        actor-entity (sp/select-one [(entity actor)] moment)]
+  [moment {:action.attr/keys [actor-name target-name duration] :or {duration 3}}]
+  (let [mp-cost 30 effect-name :debuff/poison]
     (->> moment
-         (sp/transform [(entity actor)]
+         (sp/transform [(entity actor-name)]
                        #(update % :actor.attr/mp - mp-cost))
-         (sp/setval    [(entity target) (on-effect :debuff/poison)]
+         (sp/setval    [(entity target-name) (on-effect :debuff/poison actor-name)]
                        #:effect.attr{:effect-name effect-name
-                                     :source (:db/id actor-entity)
+                                     :source-ref actor-name
                                      :duration duration})
          (sp/transform [:moment.attr/facts]
-                       #(conj % #:fact{:desc (str actor " poisons " target " ! " target " is now poisoned!")})))))
+                       #(conj % #:fact{:desc (str actor-name " poisons " target-name " ! " target-name " is now poisoned!")})))))
 
 (def debuff-poison
   #:rule
    {:rule-name  :debuff/poison
-    :activation '[:find [?affected-id ?source-id]
+    :activation '[:find [?affected-id ?source-name]
                   :where
                   [(= ?s.timing :timing/before-action)]
                   [(= ?s.who-acts ?actor-name)]
@@ -44,22 +43,22 @@
                   [?affected-id :actor.attr/actor-name ?actor-name]
                   [?affected-id :actor.attr/effects ?eff-id]
                   [?eff-id :effect.attr/effect-name :debuff/poison]
-                  [?eff-id :effect.attr/source ?source-id]]
-    :rule-fn    (fn [moment [?affected-id ?source-id]]
+                  [?eff-id :effect.attr/source-ref ?source-name]]
+    :rule-fn    (fn [moment [?affected-id ?source-name]]
                   (let [affected-entity (sp/select-one [(entity-id ?affected-id)] moment)
-                        source-entity   (sp/select-one [(entity-id ?source-id)] moment)
                         affected-hp     (:actor.attr/hp affected-entity)
+                        affected-name   (:actor.attr/actor-name affected-entity)
                         damage          (Math/floor (/ affected-hp 10))]
                     (->> moment
                          (sp/transform [(entity-id ?affected-id)]
                                        #(update % :actor.attr/hp - damage))
-                         (sp/transform [(entity-id ?affected-id) (on-effect :debuff/poison) :effect.attr/duration] dec)
+                         (sp/transform [(entity-id ?affected-id) (on-effect :debuff/poison ?source-name) :effect.attr/duration] dec)
                          (sp/transform [:moment.attr/facts]
-                                       #(conj % #:fact{:desc        (str (:actor.attr/actor-name affected-entity) " is poisoned! receives " damage " damage!")
-                                                       :event       :event/poison-unleashed
-                                                       :damage      damage
-                                                       :affected-id (select-keys affected-entity [:db/id])
-                                                       :source-id   (select-keys source-entity [:db/id])})))))})
+                                       #(conj % #:fact{:desc          (str affected-name " is poisoned! receives " damage " damage!")
+                                                       :event         :event/poison-unleashed
+                                                       :damage        damage
+                                                       :affected-name affected-name
+                                                       :source-name   ?source-name})))))})
 
 (def talent-clara
   #:rule
@@ -73,7 +72,7 @@
                         [?s.current-moment :moment.attr/facts ?fact-id]
                         [?s.current-moment :moment.attr/entities ?attacker-id]
                         [?attacker-id :actor.attr/actor-name ?attacker-name]
-                        [?fact-id :action.attr/actor ?attacker-name]
+                        [?fact-id :action.attr/actor-name ?attacker-name]
                         [?fact-id :action.attr/action-name ?action-name]
                         [?fact-id :action.attr/target ?targetted-name]]]
     :activation      '[:find [?targetted-id ?attacker-id]
@@ -120,19 +119,19 @@
                             :effects    [#:effect.attr {:effect-name :talent/clara}
                                          #:effect.attr
                                           {:effect-name :debuff/poison
-                                           :source      "hilda"
+                                           :source-ref  "hilda"
                                            :duration    1}]}]}})
 
 (def history
   [#:action.attr{:action-name :move/poison
-                 :actor       :char/hilda
+                 :actor-name  :char/hilda
                  :target      :char/aluxes
                  :duration    5}
    #:action.attr{:action-name :move/basic-attack
-                 :actor       :char/aluxes
+                 :actor-name  :char/aluxes
                  :target      :char/hilda}
    #:action.attr{:action-name :move/fireball
-                 :actor       :char/hilda
+                 :actor-name  :char/hilda
                  :target      :char/aluxes}])
 
 (comment

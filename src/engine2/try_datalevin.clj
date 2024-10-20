@@ -1,11 +1,9 @@
-(ns engine2.try-datalevin 
-  (:require [engine2.timeline :as t]))
-
-(require '[babashka.fs :as fs]
-         '[engine2.timeline :as t :refer [timeline-schema entity]]
-         '[model.topaz :as topaz]
-         '[pod.huahaiy.datalevin :as d]
-         '[com.rpl.specter :as sp])
+(ns engine2.try-datalevin
+  (:require [babashka.fs :as fs]
+            [engine2.timeline :as t :refer [timeline-schema entity]]
+            [model.topaz :as topaz]
+            [pod.huahaiy.datalevin :as d]
+            [com.rpl.specter :as sp]))
 
 (defonce random-db? (atom false))
 
@@ -142,7 +140,7 @@
                                        [?affected-id :actor.attr/name ?actor-name]
                                        [?affected-id :actor.attr/effects ?eff-id]
                                        [?eff-id :effect.attr/effect-name :debuff/poison]
-                                       [?eff-id :effect.attr/source ?source-id]]
+                                       [?eff-id :effect.attr/source-ref ?source-id]]
                                 activation-compl)]
    (try (d/q query-stmt
              (d/db timeline) :char/aluxes :timing/before-action)

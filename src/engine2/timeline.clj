@@ -38,14 +38,14 @@
 (def Action
   #:action.attr
    {:action-name {:db/valueType :db.type/keyword}
-    :actor       {:db/valueType :db.type/keyword}})
+    :actor-name  {:db/valueType :db.type/keyword}})
 
 (def Effect
   #:effect.attr
    {:effect-name {:db/cardinality :db.cardinality/one
                   :db/valueType   :db.type/keyword}
     :duration    {:db/cardinality :db.cardinality/one}
-    :source      {:db/valueType :db.type/ref}})
+    :source-ref  {:db/valueType :db.type/ref}})
 
 (def timeline-schema (merge Rule Moment Action Actor Effect))
 
@@ -85,9 +85,10 @@
 (defn entity-id [actor-id]
   [:moment.attr/entities sp/ALL #(= actor-id (:db/id %))])
 
-(defn on-effect [effect-name]
-  [:actor.attr/effects sp/ALL #(= effect-name (:effect.attr/effect-name %))])
-
+(defn on-effect [effect-name source-name]
+  [:actor.attr/effects  sp/ALL
+   #(and (= effect-name (:effect.attr/effect-name %))
+         (= source-name (:effect.attr/source-ref %)))])
 
 ;; timeline core
 
@@ -105,7 +106,7 @@
         (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])))))
 
 (defn engrave-rules!
-  [timeline rules actor timing]
+  [timeline rules actor-name timing]
   (loop [current-epoch (q-last-epoch timeline)
          rules rules]
     (let [activation-compl [['?s.current-moment :moment.attr/epoch current-epoch]
@@ -114,10 +115,9 @@
           grouped          (->> rules
                                 (mapv (fn [{:rule/keys [rules-to-inject activation] :as rule}]
                                         (let [query-stmt (apply conj activation activation-compl)
-                                              _ (prn query-stmt)
-                                              activated  (try (d/q query-stmt (d/db timeline) rules-to-inject actor timing)
+                                              activated  (try (d/q query-stmt (d/db timeline) rules-to-inject actor-name timing)
                                                               (catch Throwable e
-                                                                (prn ["error on query:" (Throwable->map e) rule])))]
+                                                                (prn ["error on query:" (dissoc (Throwable->map e) :trace) rule])))]
                                           [activated rule])))
                                 (group-by (fn [[activated _]]
                                             (if (some? activated)
@@ -146,10 +146,13 @@
         actions (-> actions (update-vals eval))]
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
-      (let [actor (:action.attr/actor action)]
-        (engrave-rules! timeline rules actor :timing/before-action)
+      (let [actor-name (:action.attr/actor-name action)]
+        (prn "before-action!")
+        (engrave-rules! timeline rules actor-name :timing/before-action)
+        (prn "engraving!")
         (engrave-action! timeline actions action)
-        (engrave-rules! timeline rules actor :timing/after-action)
+        (prn "after-action!")
+        (engrave-rules! timeline rules actor-name :timing/after-action)
         (if (empty? remaining-actions)
           ["last-moment" (q-last-moment timeline)]
           (recur remaining-actions))))))
