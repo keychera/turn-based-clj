@@ -57,53 +57,54 @@
                          (sp/transform [:moment.attr/facts]
                                        #(conj % #:fact{:desc          (str affected-name " is poisoned! receives " damage " damage!")
                                                        :event         :event/poison-unleashed
+                                                       :effect-name   :debuff/poison
                                                        :damage        damage
-                                                       :affected-name affected-name
-                                                       :source-name   ?source-name})))))})
+                                                       :source-name   ?source-name
+                                                       :affected-name affected-name})))))})
 
 (def talent-clara
   #:rule
    {:rule-name       :talent/clara
-    :rules-to-inject '[[(talent-clara? ?s.current-moment ?id-with-talent ?name-with-talent)
+    :rules-to-inject '[[(talent-clara? ?s.current-moment ?name-with-talent)
                         [?s.current-moment :moment.attr/entities ?id-with-talent]
                         [?id-with-talent :actor.attr/effects ?eff-id]
                         [?id-with-talent :actor.attr/actor-name ?name-with-talent]
                         [?eff-id :effect.attr/effect-name :talent/clara]]
-                       [(targetted? ?s.current-moment ?attacker-id ?attacker-name ?targetted-name ?action-name)
+                       [(targetted? ?s.current-moment ?attacker-name ?targetted-name ?action-name)
                         [?s.current-moment :moment.attr/facts ?fact-id]
                         [?s.current-moment :moment.attr/entities ?attacker-id]
                         [?attacker-id :actor.attr/actor-name ?attacker-name]
                         [?fact-id :action.attr/actor-name ?attacker-name]
                         [?fact-id :action.attr/action-name ?action-name]
                         [?fact-id :action.attr/target-name ?targetted-name]]]
-    :activation      '[:find [?targetted-id ?attacker-id]
+    :activation      '[:find [?targetted-name ?attacker-name]
                        :where
                        [(= ?s.timing :timing/after-action)]
-                       (talent-clara? ?s.current-moment ?targetted-id ?targetted-name)
-                       (targetted? ?s.current-moment ?attacker-id ?attacker-name ?targetted-name ?action-name)
+                       (talent-clara? ?s.current-moment ?targetted-name)
+                       (targetted? ?s.current-moment ?attacker-name ?targetted-name ?action-name)
                        [(= ?action-name :move/fireball)]
                        [(= ?s.who-acts ?attacker-name)]]
-    :rule-fn         (fn [moment [?targetted-id ?attacker-id]]
-                       (let [targeted-entity (sp/select-one [(entity-id ?targetted-id)] moment)
-                             attacker-entity (sp/select-one [(entity-id ?attacker-id)] moment)
+    :rule-fn         (fn [moment [?targetted-name ?attacker-name]]
+                       (let [targeted-entity (sp/select-one [(entity ?targetted-name)] moment)
                              attacker-hp     (:actor.attr/hp targeted-entity)
                              damage          (Math/floor (/ attacker-hp 10))]
                          (->> moment
-                              (sp/transform [(entity-id ?attacker-id)]
+                              (sp/transform [(entity ?attacker-name)]
                                             #(update % :actor.attr/hp - damage))
                               (sp/transform [:moment.attr/facts]
-                                            #(conj % #:fact{:desc        (str (:actor.attr/actor-name targeted-entity) " countered " (:actor.attr/actor-name attacker-entity) "'s attack with " damage " damage!")
-                                                            :event       :event/clara-talent-unleashed
-                                                            :damage      damage
-                                                            :affected-id (select-keys targeted-entity [:db/id])
-                                                            :source-id   (select-keys attacker-entity [:db/id])})))))})
+                                            #(conj % #:fact{:desc          (str ?targetted-name " countered " ?attacker-name "'s attack with " damage " damage!")
+                                                            :event         :event/clara-talent-unleashed
+                                                            :damage        damage
+                                                            :affected-name ?attacker-name
+                                                            :source-name   ?targetted-name})))))})
 
 (def remove-effect-on-duration-0
   #:rule
    {:rule-name  :effect/remove-0-duration
     :silent?    true
-    :activation '[:find ?affected-name ?effect-name ?source-name
+    :activation '[:find ?affected-name ?effect-name ?source-name ?epoch
                   :where
+                  [?s.current-moment :moment.attr/epoch ?epoch]
                   [?s.current-moment :moment.attr/entities ?affected-id]
                   [?affected-id :actor.attr/actor-name ?affected-name]
                   [?affected-id :actor.attr/effects ?eff-id]
@@ -153,14 +154,14 @@
 (def history
   [#:action.attr{:action-name :move/poison
                  :actor-name  :char/hilda
-                 :target-name      :char/aluxes
-                 :duration    5}
+                 :target-name :char/aluxes
+                 :duration    1}
    #:action.attr{:action-name :move/basic-attack
                  :actor-name  :char/aluxes
-                 :target-name      :char/hilda}
+                 :target-name :char/hilda}
    #:action.attr{:action-name :move/fireball
                  :actor-name  :char/hilda
-                 :target-name      :char/aluxes}])
+                 :target-name :char/aluxes}])
 
 (comment
 

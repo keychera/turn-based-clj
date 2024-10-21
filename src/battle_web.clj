@@ -42,17 +42,17 @@
                           :hx-trigger "keyup[keyCode==38] from:body"}])
                  [:p "Current moment " turn#]
                  (let [entities (:moment.attr/entities current-moment)
-                       desc     (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] current-moment)]
+                       desc     (sp/select [:moment.attr/facts sp/ALL :fact/desc some?] current-moment)]
                    [:div
                     [:p (str "Moment #" (or turn# 0))]
-                    [:p [:strong desc]]
+                    [:p [:strong (str desc)]]
                     [:p (str entities)]])
                  (->> prev-moments
                       (map (fn [{:moment.attr/keys [epoch entities facts]}]
-                             (let [desc (sp/select-one [sp/ALL :fact/desc some?] facts)]
+                             (let [desc (sp/select [sp/ALL :fact/desc some?] facts)]
                                [:div
                                 [:p (str "Moment #" epoch)]
-                                [:p [:strong desc]]
+                                [:p [:strong (str desc)]]
                                 [:p (str entities)]]))))])))))
 
 (defn battle-html [moment#]

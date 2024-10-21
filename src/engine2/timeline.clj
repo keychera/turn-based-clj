@@ -103,16 +103,23 @@
 
 ;; timeline core
 (defn unleash-rules! [timeline unleashed-rules]
-  (loop [moment                       (-> (q-last-moment timeline)
-                                          (assoc :moment.attr/facts []))
+  (loop [moment                       (q-last-moment timeline)
          [unleashed-rule & remaining] unleashed-rules]
     (let [[activated rule] unleashed-rule
           rule-fn          (:rule/rule-fn rule)
-          new-moment       (rule-fn moment activated)]
+          silent?          (:rule/silent? rule)
+          new-moment       (if silent?
+                             (rule-fn moment activated)
+                             (-> moment
+                                 (assoc :moment.attr/facts [])
+                                 (rule-fn activated)))]
       (prn ["unleashing" (:rule/rule-name rule) "with" activated])
       (if (some? remaining)
         (recur new-moment remaining)
-        (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])))))
+        (if silent?
+          (do (d/transact! timeline [[:db.fn/retractEntity (:db/id new-moment)]])
+              (d/transact! timeline [new-moment]))
+          (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))]))))))
 
 (defn engrave-rules!
   [timeline rules actor-name timing]

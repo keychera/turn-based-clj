@@ -31,7 +31,7 @@
    #:action.attr{:action-name :move/basic-attack
                  :actor-name  :char/aluxes
                  :target-name :char/hilda}
-   
+
    #:action.attr{:action-name :move/fireball
                  :actor-name  :char/hilda
                  :target-name :char/aluxes}
@@ -61,20 +61,19 @@
       (fn [timeline]
         (is (= ":char/hilda poisons :char/aluxes ! :char/aluxes is now poisoned!"
                (->> (t/q-moment timeline 1)
-                    (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?]))))))))
+                    (sp/select [:moment.attr/facts sp/ALL :fact/desc some?]) first)))))))
 
 (deftest test-poison-interaction
   (testing "poison interactions"
     (with-timeline one-poison-timeline
       (fn [timeline]
         (let [poison-moment (t/q-moment timeline 2)]
-          (is (str/includes? (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment)
+          (is (str/includes? (first (sp/select [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment))
                              "poisoned"))
-          (is :event/poison-unleashed
-              (sp/select-one [:moment.attr/facts sp/ALL :fact/event some?] poison-moment))
-          (is :debuff/poison
-              (sp/select-one [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))))))
-
+          (is [:event/poison-unleashed]
+              (sp/select [:moment.attr/facts sp/ALL :fact/event some?] poison-moment))
+          (is [:debuff/poison]
+              (sp/select [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))))))
 (def both-poison-history
   [#:action.attr{:action-name :move/poison
                  :actor-name  :char/hilda
@@ -116,36 +115,52 @@
       (is (= 9 (t/q-last-epoch timeline))))))
 
 (deftest test-both-poison-interaction
-  (testing "poison interactions"
+  (testing "testing both poison interactions on epoch 2"
     (with-timeline both-poison-timeline
       (fn [timeline]
         (let [poison-moment (t/q-moment timeline 2)]
-          (is (str/includes? (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment)
+          (is (str/includes? (first (sp/select [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment))
                              "poisoned"))
-          (is (= :event/poison-unleashed
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
-          (is (= :debuff/poison
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
-          (is (= :char/hilda
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/source-name some?] poison-moment))))
+          (is (= [:event/poison-unleashed]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
+          (is (= [:debuff/poison]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
+          (is (= [:char/aluxes]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/affected-name some?] poison-moment))))))))
+
+(deftest test-both-poison-interaction-2
+  (testing "testing both poison interactions on epoch 4"
+    (with-timeline both-poison-timeline
+      (fn [timeline]
         (let [poison-moment (t/q-moment timeline 4)]
-          (is (str/includes? (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment)
+          (is (str/includes? (first (sp/select [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment))
                              "poisoned"))
-          (is (= :event/poison-unleashed
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
-          (is (= :debuff/poison
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
-          (is (= :char/aluxes
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/source-name some?] poison-moment))))
+          (is (= [:event/poison-unleashed :event/effect-removed]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
+          (is (= [:debuff/poison :debuff/poison] ;; the second one is from remove-effects-on-duration-0
+                 (sp/select [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
+          (is (= [:char/hilda]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/affected-name some?] poison-moment))))))))
+
+(deftest test-both-poison-interaction-3
+  (testing "testing both poison interactions on epoch 6"
+    (with-timeline both-poison-timeline
+      (fn [timeline]
         (let [poison-moment (t/q-moment timeline 6)]
-          (is (str/includes? (sp/select-one [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment)
+          (is (str/includes? (first (sp/select [:moment.attr/facts sp/ALL :fact/desc some?] poison-moment))
                              "poisoned"))
-          (is (= :event/poison-unleashed
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
-          (is (= :debuff/poison
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
-          (is (= :char/aluxes
-                 (sp/select-one [:moment.attr/facts sp/ALL :fact/source-name some?] poison-moment))))
+          (is (= [:event/poison-unleashed :event/effect-removed]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/event some?] poison-moment)))
+          (is (= [:debuff/poison :debuff/poison] ;; the second one is from remove-effects-on-duration-0
+                 (sp/select [:moment.attr/facts sp/ALL :fact/effect-name some?] poison-moment)))
+          (is (= [:char/aluxes]
+                 (sp/select [:moment.attr/facts sp/ALL :fact/affected-name some?] poison-moment))))))))
+
+
+(deftest test-both-poison-interaction-4
+  (testing "testing both poison interactions on epoch 8"
+    (with-timeline both-poison-timeline
+      (fn [timeline]
         (let [poison-moment (t/q-moment timeline 8)]
-          (is (= :move/basic-attack
-                 (sp/select-one [:moment.attr/facts sp/ALL :action.attr/action-name some?] poison-moment))))))))
+          (is (= [:move/fireball]
+                 (sp/select [:moment.attr/facts sp/ALL :action.attr/action-name some?] poison-moment))))))))
