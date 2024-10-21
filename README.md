@@ -12,21 +12,21 @@
   - [x] overhaul web
   - [x] multi effect
   - [ ] diff visuals leveraging triplestores
-- [ ] events to latch on and richer effect trigger
+- [x] events to latch on and richer effect trigger
 - [x] let effect be potentially infinite
-- [ ] follow up
+- [x] follow up
 - [x] improvized moments - using the actual datalevin now
-  - [ ] saving moments in timeline
-  - [ ] categorizing/identifying moments
+  - [x] ~~~saving moments in timeline~~ 
+  - [x] categorizing/identifying moments - using :moment.attr/facts
 - [ ] player stat and damage calculation
 - [x] effect cauldron
 - [ ] player input
 - [ ] define what is shown to the player and what is kept being in the background
 - [ ] modular visuals
-- [ ] :rpj
-- [ ] real model
-  - [ ] topaz
-  - [ ] hilda
+- [x] ~~:rpj~~ turn-based-clj
+- [x] real model
+  - [x] topaz
+  - [x] hilda
 - [ ] communicate
   - [ ] clojure
   - [ ] starrail
