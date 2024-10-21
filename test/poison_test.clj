@@ -13,7 +13,7 @@
    {:actions {:move/basic-attack 'model.topaz/basic-attack
               :move/fireball     'model.topaz/fireball
               :move/poison       'model.topaz/poison}
-    :rules   [topaz/debuff-poison]
+    :rules   [topaz/debuff-poison topaz/remove-effect-on-duration-0]
     :initial default-initial-moment})
 
 (def one-poison-history

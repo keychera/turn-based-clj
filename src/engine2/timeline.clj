@@ -109,7 +109,7 @@
     (let [[activated rule] unleashed-rule
           rule-fn          (:rule/rule-fn rule)
           new-moment       (rule-fn moment activated)]
-      (prn ["GO!" unleashed-rules])
+      (prn ["unleashing" (:rule/rule-name rule) "with" activated])
       (if (some? remaining)
         (recur new-moment remaining)
         (d/transact! timeline [(make-new-entity (sp/transform [:moment.attr/epoch] inc new-moment))])))))
@@ -129,7 +129,7 @@
                                                                 (prn ["error on query:" (dissoc (Throwable->map e) :trace) rule])))]
                                           [activated rule])))
                                 (group-by (fn [[activated _]]
-                                            (if (some? activated)
+                                            (if (and (some? activated) (seq activated))
                                               :engrave!/unleashed-rules
                                               :engrave!/dormant-rules))))
           unleashed-rules  (:engrave!/unleashed-rules grouped)
@@ -147,7 +147,6 @@
                               (sp/setval    [:moment.attr/facts] [action-attr]))
         new-moment       (->> (alter moment action-attr)
                               (sp/transform [:moment.attr/epoch] inc))]
-
     (d/transact! timeline [(make-new-entity new-moment)])))
 
 (defn engrave! [timeline world history]
@@ -155,7 +154,7 @@
         actions (-> actions (update-vals eval))]
     (d/transact! timeline [initial])
     (loop [[action & remaining-actions] history]
-      (let [actor-name (:action.attr/actor-name action)] 
+      (let [actor-name (:action.attr/actor-name action)]
         (engrave-rules! timeline rules actor-name :timing/before-action)
         (engrave-action! timeline actions action)
         (engrave-rules! timeline rules actor-name :timing/after-action)

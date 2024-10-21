@@ -87,7 +87,6 @@
                        (let [targeted-entity (sp/select-one [(entity-id ?targetted-id)] moment)
                              attacker-entity (sp/select-one [(entity-id ?attacker-id)] moment)
                              attacker-hp     (:actor.attr/hp targeted-entity)
-                             _               (prn "countering..." targeted-entity attacker-entity)
                              damage          (Math/floor (/ attacker-hp 10))]
                          (->> moment
                               (sp/transform [(entity-id ?attacker-id)]
@@ -99,12 +98,40 @@
                                                             :affected-id (select-keys targeted-entity [:db/id])
                                                             :source-id   (select-keys attacker-entity [:db/id])})))))})
 
+(def remove-effect-on-duration-0
+  #:rule
+   {:rule-name  :effect/remove-0-duration
+    :silent?    true
+    :activation '[:find ?affected-name ?effect-name ?source-name
+                  :where
+                  [?s.current-moment :moment.attr/entities ?affected-id]
+                  [?affected-id :actor.attr/actor-name ?affected-name]
+                  [?affected-id :actor.attr/effects ?eff-id]
+                  [?eff-id :effect.attr/effect-name ?effect-name]
+                  [?eff-id :effect.attr/source-name ?source-name]
+                  [?eff-id :effect.attr/duration 0]]
+    :rule-fn    (fn [moment effects-to-rmv]
+                  (loop [new-moment              moment
+                         [to-remove & remaining] effects-to-rmv]
+                    (let [?affected-name (get to-remove 0)
+                          ?effect-name   (get to-remove 1)
+                          ?source-name   (get to-remove 2)
+                          new-moment     (->> new-moment
+                                              (sp/setval [(entity ?affected-name) (on-effect ?effect-name ?source-name)] sp/NONE)
+                                              (sp/transform [:moment.attr/facts]
+                                                            #(conj % #:fact{:desc        (str ?effect-name " removed!")
+                                                                            :event       :event/effect-removed
+                                                                            :effect-name ?effect-name})))]
+                      (if (empty? remaining) new-moment
+                          (recur new-moment remaining)))))})
+
 (def world
   #:world
    {:actions {:move/basic-attack 'model.topaz/basic-attack
               :move/fireball     'model.topaz/fireball
               :move/poison       'model.topaz/poison}
-    :rules   [debuff-poison talent-clara]
+    :rules   [debuff-poison talent-clara
+              remove-effect-on-duration-0]
     :initial #:moment.attr
               {:epoch    0
                :entities [#:actor.attr
