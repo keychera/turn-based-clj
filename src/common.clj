@@ -12,8 +12,8 @@
            (map (fn [[k v]] [k (java.net.URLDecoder/decode v)]))
            vec))
 
-(defn query->map 
-   "parse str of shape 'a=1&b=2' to {:a \"1\", :b \"2\"}"
+(defn query->map
+  "parse str of shape 'a=1&b=2' to {:a \"1\", :b \"2\"}"
   [q] (->> (str/split q #"&")
            (map #(str/split % #"="))
            (remove #(= (count %) 1))

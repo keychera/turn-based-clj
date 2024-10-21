@@ -1,7 +1,7 @@
 (ns engine.timeline-test
   (:require [clojure.test :refer [deftest is testing]]
             [com.rpl.specter :as sp]
-            [engine2.timeline :as t]
+            [engine.timeline :as t]
             [util.test-data :refer [with-timeline]]))
 
 ;; specter paths test

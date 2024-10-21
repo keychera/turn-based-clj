@@ -1,8 +1,7 @@
-(ns engine2.timeline
+(ns engine.timeline
   (:require [clojure.walk :refer [prewalk]]
-            [com.rpl.specter :as sp]))
-
-(require '[pod.huahaiy.datalevin :as d])
+            [com.rpl.specter :as sp]
+            [pod.huahaiy.datalevin :as d]))
 
 ;; datalevin
 (def Rule

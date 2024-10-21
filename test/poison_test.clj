@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [com.rpl.specter :as sp]
-            [engine2.timeline :as t]
+            [engine.timeline :as t]
             [model.topaz :as topaz]
             [pod.huahaiy.datalevin :as d]
             [util.test-data :refer [default-initial-moment with-fresh-timeline

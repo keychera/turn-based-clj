@@ -1,7 +1,7 @@
 (ns fua-test
   (:require [clojure.test :refer [deftest is]]
             [com.rpl.specter :as sp]
-            [engine2.timeline :as t :refer [entity]]
+            [engine.timeline :as t :refer [entity]]
             [model.topaz :as topaz]
             [pod.huahaiy.datalevin :as d]
             [util.test-data :refer [default-initial-moment with-fresh-timeline

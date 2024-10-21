@@ -1,6 +1,6 @@
-(ns engine2.try-datalevin
+(ns engine.try-datalevin
   (:require [babashka.fs :as fs]
-            [engine2.timeline :as t :refer [timeline-schema entity]]
+            [engine.timeline :as t :refer [timeline-schema entity]]
             [model.topaz :as topaz]
             [pod.huahaiy.datalevin :as d]
             [com.rpl.specter :as sp]))

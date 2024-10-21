@@ -6,7 +6,7 @@
             [hiccup2.core :refer [html]]
             [pod.huahaiy.datalevin :as d]
             [selmer.parser :refer [render-file]]
-            [engine2.timeline :as t]
+            [engine.timeline :as t]
             [com.rpl.specter :as sp]))
 
 (defn timeline-html

@@ -1,5 +1,5 @@
 (ns util.test-data
-  (:require [engine2.timeline :refer [timeline-schema]]
+  (:require [engine.timeline :refer [timeline-schema]]
             [pod.huahaiy.datalevin :as d]))
 
 (def default-initial-moment

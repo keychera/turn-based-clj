@@ -1,7 +1,7 @@
 (ns model.topaz
   (:require [com.rpl.specter :as sp]
-            [engine2.timeline :refer [entity entity-id on-effect
-                                      on-or-add-effect]]))
+            [engine.timeline :refer [entity entity-id on-effect
+                                     on-or-add-effect]]))
 
 (defn basic-attack [moment {:action.attr/keys [actor-name target-name]}]
   (let [damage 50]
