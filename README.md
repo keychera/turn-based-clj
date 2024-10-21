@@ -16,7 +16,7 @@
 - [x] let effect be potentially infinite
 - [x] follow up
 - [x] improvized moments - using the actual datalevin now
-  - [x] ~~~saving moments in timeline~~ 
+  - [x] ~~saving moments in timeline~~ 
   - [x] categorizing/identifying moments - using :moment.attr/facts
 - [ ] player stat and damage calculation
 - [x] effect cauldron
